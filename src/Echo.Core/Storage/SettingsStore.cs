@@ -62,7 +62,7 @@ public sealed class SettingsStore : ISettingsStore
                 Log?.Invoke("[settings] lecture impossible : les valeurs en mémoire sont conservées.");
                 return _current;
             }
-            _current = MigrateToFreeTier(HealBuiltinTemplateNames(loaded));
+            _current = MigrateUpdateUrl(MigrateToFreeTier(HealBuiltinTemplateNames(loaded)));
             return _current;
         }
     }
@@ -72,6 +72,19 @@ public sealed class SettingsStore : ISettingsStore
     /// load, in memory; persisted by the next Save. A gemini provider is left as chosen (5.6.1
     /// rewrote it to mistral; Gemini is offered again).
     /// </summary>
+    /// <summary>
+    /// 5.7.1: updates come from the latest GitHub release. Installs set up from a synced
+    /// SharePoint folder point at a local "…\MAJ\version.json", which breaks as soon as the
+    /// folder is no longer synced; an empty value disabled updates altogether. Both move to
+    /// the GitHub URL. A custom https source is left alone.
+    /// </summary>
+    private static AppSettings MigrateUpdateUrl(AppSettings s)
+    {
+        var url = s.UpdateUrl?.Trim() ?? "";
+        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) s.UpdateUrl = EchoConstants.DefaultUpdateUrl;
+        return s;
+    }
+
     private static AppSettings MigrateToFreeTier(AppSettings s)
     {
         // 5.6.2: a free key also gets 0 req/min on mistral-small/medium (2026-10-13), so the

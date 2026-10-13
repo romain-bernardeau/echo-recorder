@@ -73,13 +73,14 @@ Write-Host "Fichiers installes dans $TargetDir"
 
 if ($DevTest) { Write-Host "(mode test : ni reglages, ni raccourci, ni lancement)"; exit 0 }
 
-# -- regler l'URL de mise a jour sur ..\MAJ\version.json -------------------------------
+# -- regler l'URL de mise a jour sur la release GitHub -------------------------------
 $setDir = Join-Path $env:APPDATA "Echo"
 New-Item -ItemType Directory -Force $setDir | Out-Null
 $setPath = Join-Path $setDir "settings.json"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
-# Valeur JSON de la cle (chaine echappee : antislashs, guillemets).
-$urlJson = '"' + $vjPath.Replace('\', '\\').Replace('"', '\"') + '"'
+# Les mises a jour viennent de la derniere release GitHub (publique, sans compte) : le poste
+# n'a plus besoin de garder le dossier partage synchronise apres l'installation.
+$urlJson = '"https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json"'
 if (-not (Test-Path $setPath)) {
     [System.IO.File]::WriteAllText($setPath, "{`n  ""update_url"": $urlJson`n}`n", $utf8)
 } else {

@@ -20,7 +20,7 @@ public sealed class AppSettings
     [JsonPropertyName("capture_mode")] public string CaptureMode { get; set; } = "endpoint";
     [JsonPropertyName("app_lang")] public string AppLang { get; set; } = "fr";
     [JsonPropertyName("key_store")] public string KeyStore { get; set; } = "dpapi";
-    [JsonPropertyName("update_url")] public string UpdateUrl { get; set; } = "";
+    [JsonPropertyName("update_url")] public string UpdateUrl { get; set; } = EchoConstants.DefaultUpdateUrl;
     [JsonPropertyName("update_auto")] public bool UpdateAuto { get; set; } = true;
     [JsonPropertyName("setup_done")] public bool SetupDone { get; set; }
     [JsonPropertyName("autostart")] public bool Autostart { get; set; }

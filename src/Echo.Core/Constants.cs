@@ -9,7 +9,11 @@ public static class EchoConstants
     public const string AppName = "Echo";
 
     /// <summary>.NET rewrite line. Kept &gt; the Python 4.2.0 so update logic treats it as newer.</summary>
-    public const string AppVersion = "5.7.0";
+    public const string AppVersion = "5.7.1";
+
+    /// <summary>Where every install looks for updates: the version.json asset of the latest
+    /// GitHub release (public, no sign-in). Its relative zip url resolves next to it.</summary>
+    public const string DefaultUpdateUrl = "https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json";
 
     public const string EnvApiKey = "MISTRAL_API_KEY";
     /// <summary>Env var for the Google AI Studio (Gemini) key, when the Gemini provider is used.</summary>

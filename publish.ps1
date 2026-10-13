@@ -17,6 +17,8 @@
 #   -FfmpegPath ffmpeg.exe a bundler ; defaut = cache essentials, puis PATH (doit avoir libmp3lame)
 #   -KeepZips   nombre de zips conserves dans MAJ (defaut 3)
 #   -SkipTests  saute la suite de tests (deconseille)
+#   -SkipGitHub ne cree pas la release GitHub (par defaut : release v<version> avec le zip + version.json,
+#               source des mises a jour de tous les postes ; le code doit etre commite et pousse avant)
 
 param(
     [string]$Version = "",
@@ -24,7 +26,8 @@ param(
     [string]$Notes = "",
     [string]$FfmpegPath = "",
     [int]$KeepZips = 3,
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$SkipGitHub
 )
 
 $ErrorActionPreference = "Stop"
@@ -81,6 +84,8 @@ foreach ($banned in @("context_bias.txt", "secret.bin", "secret.txt", "secret_go
     if ($hit) { throw "SECURITE : $banned trouve dans le publish ($($hit.FullName)) — abandon." }
 }
 Write-Host "   contenu OK (Echo.exe, ui, lexique ; aucune donnee locale)"
+# licence d'Echo + notices des composants tiers (dont ffmpeg, GPL) livrees avec le binaire
+foreach ($f in @("LICENSE", "THIRD-PARTY-NOTICES.md")) { Copy-Item (Join-Path $repo $f) (Join-Path $stage $f) -Force }
 
 # -- 5. ffmpeg (essentials de preference) --------------------------------------------
 Step "ffmpeg"
@@ -135,6 +140,17 @@ if ($zips.Count -gt $KeepZips) {
         Write-Host "   suppression ancien zip : MAJ\$($_.Name)"
         Remove-Item $_.FullName -Force
     }
+}
+
+# -- 9. release GitHub (source des mises a jour) ---------------------------------------
+if (-not $SkipGitHub) {
+    Step "Release GitHub v$Version"
+    $ghRepo = "romain-bernardeau/echo-recorder"
+    $title = "Echo $Version"
+    $body = if ($Notes) { $Notes } else { $title }
+    & gh release create "v$Version" $zipPath $vjPath --repo $ghRepo --target main --title $title --notes $body
+    if ($LASTEXITCODE -ne 0) { throw "Creation de la release GitHub en echec (gh). Le dossier partage est a jour ; relancez avec -SkipTests apres correction." }
+    Write-Host "   https://github.com/$ghRepo/releases/tag/v$Version"
 }
 
 Remove-Item $stage -Recurse -Force

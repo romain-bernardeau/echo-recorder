@@ -6,7 +6,7 @@ et rédige un compte rendu prêt à envoyer — sans robot dans la réunion.
 
 Le dossier Echo partagé contient :
   - Installation\ : ce dont vous avez besoin pour installer (ce fichier + l'installeur)
-  - MAJ\          : la version courante et les mises à jour (géré automatiquement)
+  - MAJ\          : la version courante, lue par l'installeur
 
 INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
 ------------------------------------------------------------
@@ -17,7 +17,8 @@ INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
 2. Dans le dossier « Installation », double-cliquez sur « Installer Echo.cmd ».
    L'application s'installe dans votre profil et se lance ; un raccourci
    « Echo » apparaît dans le menu Démarrer. (Laissez le dossier « MAJ » à côté :
-   l'installeur y lit la version à installer.)
+   l'installeur y lit la version à installer. Ensuite, la synchronisation n'est plus
+   nécessaire : les mises à jour arrivent directement de GitHub.)
 
 3. Collez votre clé API Mistral dans Paramètres → Intégrations.
    Chacun utilise SA propre clé. Le guide pas-à-pas est dans l'application :
@@ -25,7 +26,8 @@ INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
 
 MISES À JOUR
 ------------
-Automatiques : à chaque démarrage, Echo vérifie ce dossier et vous propose la
+Automatiques : à chaque démarrage, Echo vérifie la dernière version publiée sur
+GitHub (github.com/romain-bernardeau/echo-recorder) et vous propose la
 nouvelle version quand il y en a une (Paramètres → « Vérifier maintenant » pour
 forcer). En cas de souci après une mise à jour : Paramètres → « Version
 précédente » restaure l'ancienne installation.
