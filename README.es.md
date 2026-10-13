@@ -1,6 +1,16 @@
+<p align="center"><img src="assets/echo-logo.png" width="96" alt="Logo de Echo"></p>
+<h1 align="center">Echo</h1>
+<p align="center">Grabe sus reuniones de Teams y obtenga la transcripción y un acta lista para enviar. Sin bot en la reunión.</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0D2F4B" alt="Plataforma: Windows 10 y 11">
+  <img src="https://img.shields.io/badge/works%20with-Microsoft%20Teams-2f6db0" alt="Funciona con Microsoft Teams">
+  <img src="https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white" alt=".NET 8">
+  <img src="https://img.shields.io/badge/license-MIT-2ea44f" alt="Licencia: MIT">
+</p>
 <p align="center"><a href="README.md">English</a> · <a href="README.fr.md">Français</a> · <b>Español</b></p>
 
-# Echo
+> **Por ahora, solo Windows y Microsoft Teams.** Las reuniones presenciales grabadas en un PC con
+> Windows también funcionan. macOS, Google Meet y Zoom están en la [hoja de ruta](#hoja-de-ruta).
 
 Echo graba sus reuniones de Teams (o presenciales) en Windows, transcribe quién dijo qué y redacta
 un acta lista para enviar. Ningún bot se une a la reunión: Echo capta el audio del PC y lee los
@@ -42,6 +52,15 @@ Ajustes > Proveedores: los modelos marcados como **Free** funcionan con una clav
 Requisitos: Windows 10 u 11 con WebView2, Microsoft Teams (nueva versión). La interfaz está
 disponible en francés e inglés.
 
+## Hoja de ruta
+
+- **Versiones publicadas en GitHub**, con un instalador descargable y actualizaciones servidas
+  desde GitHub.
+- Versión para **macOS**.
+- Compatibilidad con **Google Meet** y **Zoom** (detección de la reunión y nombres de los
+  participantes).
+- Ayuda en línea en GitHub, botón «Informar de un problema» en la aplicación.
+
 ## Compilar
 
 ```powershell
@@ -59,7 +78,8 @@ Los errores y las ideas son bienvenidos en [Issues](../../issues).
 
 ## Licencia
 
-Copyright (C) 2026 Echo contributors.
+[MIT](LICENSE), Copyright (c) 2026 Echo contributors. Componentes de terceros (incluido FFmpeg,
+distribuido como programa independiente bajo GPL): `THIRD-PARTY-NOTICES.md`.
 
-Echo es software libre bajo la licencia GNU GPL v3 o posterior (SPDX: `GPL-3.0-or-later`), ver
-`LICENSE`. Componentes de terceros: `THIRD-PARTY-NOTICES.md`.
+Microsoft Teams, Windows, Google Meet, Zoom y macOS son marcas de sus respectivos propietarios.
+Echo es un proyecto independiente, sin afiliación ni respaldo de dichas empresas.

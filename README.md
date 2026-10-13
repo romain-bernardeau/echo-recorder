@@ -1,6 +1,16 @@
+<p align="center"><img src="assets/echo-logo.png" width="96" alt="Echo logo"></p>
+<h1 align="center">Echo</h1>
+<p align="center">Record your Teams meetings, get the transcript and minutes ready to send. No bot in the meeting.</p>
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0D2F4B" alt="Platform: Windows 10 and 11">
+  <img src="https://img.shields.io/badge/works%20with-Microsoft%20Teams-2f6db0" alt="Works with Microsoft Teams">
+  <img src="https://img.shields.io/badge/.NET-8-512BD4?logo=dotnet&logoColor=white" alt=".NET 8">
+  <img src="https://img.shields.io/badge/license-MIT-2ea44f" alt="License: MIT">
+</p>
 <p align="center"><b>English</b> · <a href="README.fr.md">Français</a> · <a href="README.es.md">Español</a></p>
 
-# Echo
+> **Windows and Microsoft Teams only for now.** In-person meetings recorded on a Windows PC work
+> too. macOS, Google Meet and Zoom are on the [roadmap](#roadmap).
 
 Echo records your Teams meetings (or in-person meetings) on Windows, transcribes who said what
 and drafts minutes ready to send. No bot joins the meeting: Echo captures the PC's audio and reads
@@ -40,6 +50,13 @@ with a free key.
 Requirements: Windows 10 or 11 with WebView2, Microsoft Teams (new version). The interface is
 available in French and English.
 
+## Roadmap
+
+- **Releases on GitHub** with a downloadable installer and updates served from GitHub.
+- **macOS** version.
+- **Google Meet** and **Zoom** support (meeting detection and speaker names).
+- Online help on GitHub, "report a problem" button in the app.
+
 ## Building
 
 ```powershell
@@ -57,7 +74,8 @@ Bugs and ideas are welcome in [Issues](../../issues).
 
 ## License
 
-Copyright (C) 2026 Echo contributors.
+[MIT](LICENSE), Copyright (c) 2026 Echo contributors. Third-party components (including FFmpeg,
+shipped as a separate GPL program): `THIRD-PARTY-NOTICES.md`.
 
-Echo is free software under the GNU GPL v3 or later (SPDX: `GPL-3.0-or-later`), see `LICENSE`.
-Third-party components: `THIRD-PARTY-NOTICES.md`.
+Microsoft Teams, Windows, Google Meet, Zoom and macOS are trademarks of their respective owners.
+Echo is an independent project, not affiliated with or endorsed by them.
