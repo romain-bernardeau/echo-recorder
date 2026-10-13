@@ -406,6 +406,8 @@ body{font-family:var(--font);color:var(--ink);background:var(--bg-canvas);font-s
 .model-ind.ok{color:var(--ok)}
 .model-ind.err{color:var(--rec)}
 .model-free{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--ok);border:1px solid var(--ok);border-radius:4px;padding:1px 6px;line-height:16px}
+/* "Show model details" off: the per-task model rows are hidden (still filled by loadModelLists) */
+.models-hidden .set-item:has(.model-pick){display:none}
 /* provider summary shown in the Transcription / Compte rendu cards */
 .prov-sum{font-weight:600;color:var(--ink)}
 /* "✓ enregistré" flash next to a control that just persisted a setting */

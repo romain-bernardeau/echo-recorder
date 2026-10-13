@@ -17,6 +17,8 @@ Echo enregistre vos réunions Teams (ou en présentiel) sur Windows, transcrit q
 et rédige un compte rendu prêt à envoyer. Aucun robot ne rejoint la réunion : Echo capte le son
 du PC et lit les noms des intervenants directement dans la fenêtre Teams.
 
+**Aide :** le [guide d'utilisation](help/README.fr.md) explique l'installation, l'enregistrement, les clés API et le dépannage.
+
 ![Echo, écran d'accueil](assets/screenshots/home-fr.png)
 
 ## Ce que fait Echo

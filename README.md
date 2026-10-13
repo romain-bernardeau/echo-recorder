@@ -16,6 +16,8 @@ Echo records your Teams meetings (or in-person meetings) on Windows, transcribes
 and drafts minutes ready to send. No bot joins the meeting: Echo captures the PC's audio and reads
 the speakers' names straight from the Teams window.
 
+**Help:** the [user guide](help/README.md) covers setup, recording, API keys and troubleshooting.
+
 ![Echo, home screen](assets/screenshots/home-en.png)
 
 ## What Echo does

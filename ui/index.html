@@ -909,6 +909,7 @@ function renderSettings(){
   const modelSel=(prov,key,cur,kind)=>`<div class="model-pick" data-prov="${prov}" data-key="${key}" data-kind="${kind}" data-cur="${esc(cur)}"><span class="model-free" data-model-freetag ${isFreeModel(prov,cur)?'':'style="display:none"'}>Free</span><select class="select" data-model-sel><option value="${esc(cur)}" selected>${esc(cur)}</option><option value="__other">${t('model_other')}</option></select><div class="field" data-model-freebox style="display:none"><input data-model-free value="${esc(cur)}" placeholder="${t('model_free_ph')}"></div><span class="model-ind" data-model-ind>${t('model_loading')}</span></div>`;
   const themeVal=(s.ui_theme==='dark')?'dark':(s.ui_theme==='light')?'light':'system';
   const fmts=Array.isArray(s.cr_formats)&&s.cr_formats.length?s.cr_formats:['eml'];
+  const showModels=modelDetailsOn();
   c.innerHTML=`
   <div class="set-card" id="set-compte"><h3>${t('card_account')}</h3>
     <div class="set-item"><div class="lbl"><b>${t('set_name')}</b><span>${t('set_name_sub')}</span></div><div class="field" style="max-width:260px;flex:1"><input id="setUserName" value="${esc(s.user_name||'')}" placeholder="${t('name_ph')}"></div></div>
@@ -952,8 +953,9 @@ function renderSettings(){
     <div id="tplManager"></div>
     <div class="set-item"><div class="lbl"><b>${t('set_newtpl')}</b><span>${t('set_newtpl_sub')}</span></div><button class="btn" id="addTplBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>${t('create_tpl')}</button></div>
   </div>
-  <div class="set-card" id="set-integ"><h3>${t('card_prov')}</h3>
+  <div class="set-card${showModels?'':' models-hidden'}" id="set-integ"><h3>${t('card_prov')}</h3>
     <div class="set-item"><div class="lbl"><span style="margin-top:0">${t('prov_intro')}</span></div></div>
+    <div class="set-item"><div class="lbl"><b>${t('set_model_details')}</b><span>${t('set_model_details_sub')}</span></div>${sw(showModels,'id="modelDetailsTog"')}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_transc_prov')}</b><span>${t('set_transc_prov_sub')}</span></div>${seg('transcription_provider',s.transcription_provider||'mistral',[['mistral',t('prov_voxtral')],['gemini',t('prov_gemini')],['cloudflare',t('prov_cloudflare')]])}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_cr_prov')}</b><span>${t('set_cr_prov_sub')}</span></div>${seg('cr_provider',s.cr_provider||'mistral',[['mistral',t('prov_mistral')],['gemini',t('prov_gemini')],['cloudflare',t('prov_cloudflare')],['openrouter',t('prov_openrouter')]])}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_autofb')}</b><span>${t('set_autofb_sub')}</span></div>${tog('auto_fallback_provider',s.auto_fallback_provider!==false)}</div>
@@ -994,7 +996,6 @@ function renderSettings(){
     <div class="set-item"><div class="lbl"><b>${t('set_applang')}</b><span>${t('set_applang_sub')}</span></div>${seg('app_lang',s.app_lang,[['fr','Français'],['en','English']])}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_autostart')}</b><span>${t('set_autostart_sub')}</span></div>${sw(META.autostart,'id="autostartTog"')}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_recdir')}</b><span id="recDirPath">${esc(META.rec_dir||'')}</span></div><div style="display:flex;gap:8px"><button class="btn sm" id="changeRec">${t('change')}</button><button class="btn sm" id="openRec2">${t('open')}</button></div></div>
-    <div class="set-item"><div class="lbl"><b>${t('set_updates')}</b><span>${t('set_updates_sub')}</span></div><div class="field" style="max-width:300px;flex:1"><input id="updUrl" value="${esc(s.update_url||'')}" placeholder="https://…/version.json"></div></div>
     <div class="set-item"><div class="lbl"><b>${t('set_autocheck')}</b><span>${t('set_autocheck_sub')}</span></div>${tog('update_auto',s.update_auto!==false)}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_checknow')}</b><span id="updStatus"></span></div><button class="btn sm" id="checkUpd">${t('check')}</button>${META.has_backup?`<button class="btn sm" id="rollbackBtn">${t('prev_version')}</button>`:''}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_help')}</b><span>${t('set_help_sub')}</span></div><button class="btn sm" id="helpBtn">${t('open_help')}</button></div>
@@ -1009,6 +1010,11 @@ function renderSettings(){
    model in "Fournisseurs & modèles" and believe the engine had switched. The choice
    now lives in one place only; the Transcription and Compte rendu cards just state
    what is in force, engine AND model, and link back to it. */
+/* "Show model details" switch of the Providers card: a UI preference only (this browser
+   profile), off by default. Storage can be missing or blocked, hence the try/catch. */
+const MODEL_DETAILS_KEY='echo.showModelDetails';
+function modelDetailsOn(){try{return localStorage.getItem(MODEL_DETAILS_KEY)==='1';}catch(e){return false;}}
+function setModelDetails(on){try{localStorage.setItem(MODEL_DETAILS_KEY,on?'1':'0');}catch(e){}}
 function provName(id){return {mistral:'Mistral',gemini:'Gemini',cloudflare:'Cloudflare',openrouter:'OpenRouter'}[id]||'Mistral';}
 function provSummary(kind){
   const s=META.settings||{};
@@ -1262,7 +1268,7 @@ function wireSettings(){
   const commit=(id,key)=>{const e=$(id);if(!e)return;let prev=e.value;e.onchange=async()=>{
     if(await saveSetting(key,e.value)){prev=e.value;META.settings[key]=e.value;flashSaved(e.parentElement||e);}
     else{e.value=prev;toast(t('setting_save_fail'),'err');}};};
-  commit('#setUserName','user_name');commit('#updUrl','update_url');
+  commit('#setUserName','user_name');
   /* rétention audio : envoyer un NOMBRE (une chaîne serait ignorée par le merge typé côté C#) */
   const numSet=(id,key)=>{const e=$(id);if(!e)return;let prev=e.value;e.onchange=async()=>{const v=Math.max(0,parseInt(e.value,10)||0);e.value=v;
     if(await saveSetting(key,v)){prev=String(v);META.settings[key]=v;flashSaved(e.parentElement||e);loadStorage();}
@@ -1344,6 +1350,11 @@ function wireSettings(){
       prev=v;META.settings.cloudflare_account_id=v;flashSaved(cfAcct.parentElement||cfAcct);loadModelLists('cloudflare');};
     cfAcct.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();cfAcct.blur();}};}
   wireModelPicks();
+  bn('#modelDetailsTog',function(){
+    const on=!this.classList.contains('on');
+    setSwitch(this,on);setModelDetails(on);
+    const card=$('#set-integ');if(card)card.classList.toggle('models-hidden',!on);
+  });
   bn('#importTeams2',()=>api().import_teams());
   bn('#autoRecTog',async function(){
     const el=this,on=!el.classList.contains('on');
@@ -1405,8 +1416,8 @@ function wireSettings(){
 
 /* ============================== état live ============================== */
 /* Indicateur API (barre latérale, au-dessus du profil) : vert discret quand la clé
-   répond ; bouton rouge quand elle manque ou qu'un appel a échoué, clic = page
-   d'aide, onglet « Clé API Mistral ». Redessiné seulement quand l'état change. */
+   répond ; bouton rouge quand elle manque ou qu'un appel a échoué, clic = aide en
+   ligne, section des clés API. Redessiné seulement quand l'état change. */
 let _apiIndLast='';
 function updateApiInd(api,msg){
   const el=$('#apiInd');if(!el||!api)return;
@@ -1423,7 +1434,13 @@ function updateApiInd(api,msg){
     el.onclick=()=>{try{api_open_help();}catch(e){}};
   }
 }
-function api_open_help(){api().open_help('cle-api');}
+/* Help on GitHub: the section of the provider in use when one provider does both jobs,
+   otherwise the "API keys" overview. */
+function api_open_help(){
+  const s=(META&&META.settings)||{};
+  const tr=s.transcription_provider||'mistral',cr=s.cr_provider||'mistral';
+  api().open_help(tr===cr?tr:'api-keys');
+}
 /* get_state + poll_toasts toutes les secondes, jamais deux appels en vol en même temps, et
    rien du tout tant que la fenêtre est masquée ou réduite (reprise immédiate au retour). */
 let _tickBusy=false,_tickTimer=0;

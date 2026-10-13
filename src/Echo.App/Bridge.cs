@@ -725,28 +725,42 @@ public sealed class Bridge
 
     private bool OpenHelp(string? anchor = null)
     {
-        try
-        {
-            var lang = _s.Settings.Current.AppLang ?? "fr";
-            var html = HelpPage.Build(lang, EchoConstants.AppVersion);
-            var dest = Path.Combine(_s.Paths.DataDir, $"Echo - Aide ({lang}).html");
-            Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
-            File.WriteAllText(dest, html, new UTF8Encoding(false));
-            if (string.IsNullOrWhiteSpace(anchor))
-            {
-                ShellOpen(dest);   // our own generated page: opened in the system browser, not the app view
-            }
-            else
-            {
-                // Deep-link to a tab (e.g. "cle-api" from the sidebar API indicator): the help
-                // page activates the tab matching location.hash. A bare file PATH cannot carry
-                // a fragment, so open the file:/// URI instead.
-                var uri = new Uri(dest).AbsoluteUri + "#" + anchor.Trim().TrimStart('#');
-                Process.Start(new ProcessStartInfo { FileName = uri, UseShellExecute = true });
-            }
-        }
+        try { ShellOpen(HelpUrl(_s.Settings.Current.AppLang, anchor)); }   // system browser, not the app view
         catch (Exception ex) { Log.Error("open_help", ex); }
         return true;
+    }
+
+    /// <summary>Section ids of the online help, the same in every language (help/README*.md).</summary>
+    private static readonly HashSet<string> HelpSections = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "getting-started", "recording", "after-the-meeting", "api-keys", "mistral", "cloudflare",
+        "gemini", "openrouter", "troubleshooting", "settings",
+    };
+
+    /// <summary>Tab ids of the former local help page, still accepted from older callers.</summary>
+    private static readonly Dictionary<string, string> LegacyHelpAnchors = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["prise-en-main"] = "getting-started",
+        ["enregistrer"] = "recording",
+        ["apres"] = "after-the-meeting",
+        ["cle-api"] = "api-keys",
+        ["depannage"] = "troubleshooting",
+    };
+
+    /// <summary>Online help page for the app language (fr, es, otherwise English), with an
+    /// optional section anchor. Unknown anchors open the top of the page.</summary>
+    internal static string HelpUrl(string? lang, string? anchor)
+    {
+        var page = (lang ?? "").Trim().ToLowerInvariant() switch
+        {
+            "fr" => "README.fr.md",
+            "es" => "README.es.md",
+            _ => "README.md",
+        };
+        var a = (anchor ?? "").Trim().TrimStart('#');
+        if (LegacyHelpAnchors.TryGetValue(a, out var mapped)) a = mapped;
+        var url = EchoConstants.HelpBaseUrl + page;
+        return HelpSections.Contains(a) ? url + "#" + a.ToLowerInvariant() : url;
     }
 
     private object CheckUpdate()
@@ -1572,7 +1586,7 @@ public sealed class Bridge
         return true;
     }
 
-    /// <summary>Shell-open a path the APP chose (recordings root, generated help page): no guard.</summary>
+    /// <summary>Shell-open a path the APP chose (recordings root, online help): no guard.</summary>
     private static void ShellOpen(string p)
     {
         if (string.IsNullOrWhiteSpace(p)) return;

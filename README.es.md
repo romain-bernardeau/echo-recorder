@@ -16,6 +16,8 @@ Echo graba sus reuniones de Teams (o presenciales) en Windows, transcribe quién
 un acta lista para enviar. Ningún bot se une a la reunión: Echo capta el audio del PC y lee los
 nombres de los participantes directamente en la ventana de Teams.
 
+**Ayuda:** la [guía de uso](help/README.es.md) explica la configuración, la grabación, las claves API y la solución de problemas.
+
 ![Echo, pantalla de inicio](assets/screenshots/home-en.png)
 
 ## Qué hace Echo
