@@ -9,13 +9,15 @@ public static class EchoConstants
     public const string AppName = "Echo";
 
     /// <summary>.NET rewrite line. Kept &gt; the Python 4.2.0 so update logic treats it as newer.</summary>
-    public const string AppVersion = "5.6.2";
+    public const string AppVersion = "5.7.0";
 
     public const string EnvApiKey = "MISTRAL_API_KEY";
     /// <summary>Env var for the Google AI Studio (Gemini) key, when the Gemini provider is used.</summary>
     public const string EnvGoogleApiKey = "GOOGLE_API_KEY";
     /// <summary>Env var for the Cloudflare Workers AI API token, when the Cloudflare provider is used.</summary>
     public const string EnvCloudflareApiToken = "CLOUDFLARE_API_TOKEN";
+    /// <summary>Env var for the OpenRouter API key, when the OpenRouter provider is used.</summary>
+    public const string EnvOpenRouterApiKey = "OPENROUTER_API_KEY";
     public const string SingleInstanceMutex = "EchoWebviewSingletonMutex";
 
     // --- DPAPI (secret_store.py) — MUST stay byte-identical or existing secret.bin fails to decrypt ---
@@ -48,6 +50,7 @@ public static class EchoConstants
     public const string ProviderMistral = "mistral";
     public const string ProviderGemini = "gemini";
     public const string ProviderCloudflare = "cloudflare";
+    public const string ProviderOpenRouter = "openrouter";
 
     // --- Cloudflare Workers AI defaults ---
     /// <summary>Whisper large v3 turbo on Workers AI: segment timestamps, no diarisation,
@@ -56,6 +59,14 @@ public static class EchoConstants
     /// <summary>Chat model for CR / summary / postprocess when cr_provider = cloudflare
     /// (OpenAI-compatible /ai/v1/chat/completions endpoint).</summary>
     public const string DefaultCloudflareCrModel = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+
+    // --- OpenRouter defaults (chat only: CR, summary, postprocess) ---
+    /// <summary>Free model (pricing 0/0 in the public catalogue on 2026-10-13): Gemma 4 31B
+    /// instruct is a dense multilingual instruct model with a 262 k context window, accepts
+    /// response_format (JSON minutes) and does not reason by default, so the answer is not
+    /// eaten by hidden thinking tokens. No free Llama 3.3 70B, Mistral or DeepSeek variant was
+    /// listed that day.</summary>
+    public const string DefaultOpenRouterCrModel = "google/gemma-4-31b-it:free";
 
     // --- Legacy folder name (one-time Voxra -> Echo migration) ---
     public const string LegacyAppName = "Voxra";

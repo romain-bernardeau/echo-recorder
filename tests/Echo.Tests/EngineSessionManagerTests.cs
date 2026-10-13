@@ -345,6 +345,10 @@ public sealed class EngineSessionManagerTests : IDisposable
         public bool CloudflareKeyPresent() => false;
         public void SaveCloudflare(string key) { }
         public void ClearCloudflare() { }
+        public string? ResolveOpenRouterKey() => null;
+        public bool OpenRouterKeyPresent() => false;
+        public void SaveOpenRouter(string key) { }
+        public void ClearOpenRouter() { }
         public string? ResolveKeyFor(string? provider) => provider is null or "" or "mistral" ? "test-key" : null;
         public bool KeyPresentFor(string? provider) => ResolveKeyFor(provider) is not null;
     }

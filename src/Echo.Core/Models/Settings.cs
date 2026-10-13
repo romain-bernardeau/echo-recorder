@@ -53,7 +53,7 @@ public sealed class AppSettings
     // Mistral behaviour, so an existing install is unchanged until the user opts in.
     /// <summary>"mistral" (Voxtral) or "gemini" (gemini flash) — engine for transcription.</summary>
     [JsonPropertyName("transcription_provider")] public string TranscriptionProvider { get; set; } = "mistral";
-    /// <summary>"mistral" or "gemini" — engine for the CR, the summary and the LLM postprocess.</summary>
+    /// <summary>"mistral", "gemini", "cloudflare" or "openrouter": engine for the CR, the summary and the LLM postprocess.</summary>
     [JsonPropertyName("cr_provider")] public string CrProvider { get; set; } = "mistral";
     /// <summary>Gemini model used when transcription_provider = gemini.</summary>
     [JsonPropertyName("gemini_transcribe_model")] public string GeminiTranscribeModel { get; set; } = "gemini-3.6-flash";
@@ -70,6 +70,9 @@ public sealed class AppSettings
     [JsonPropertyName("cloudflare_transcribe_model")] public string CloudflareTranscribeModel { get; set; } = "@cf/openai/whisper-large-v3-turbo";
     /// <summary>Workers AI chat model used when cr_provider = cloudflare (CR + summary + postprocess).</summary>
     [JsonPropertyName("cloudflare_cr_model")] public string CloudflareCrModel { get; set; } = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+    /// <summary>OpenRouter chat model used when cr_provider = openrouter (CR + summary + postprocess).
+    /// OpenRouter has no transcription API, so there is no openrouter transcribe model.</summary>
+    [JsonPropertyName("openrouter_cr_model")] public string OpenRouterCrModel { get; set; } = EchoConstants.DefaultOpenRouterCrModel;
     [JsonPropertyName("user_name")] public string UserName { get; set; } = "";
     [JsonPropertyName("user_email")] public string UserEmail { get; set; } = "";
     [JsonPropertyName("cr_templates")] public List<CrTemplate> CrTemplates { get; set; } = CrTemplate.Defaults();

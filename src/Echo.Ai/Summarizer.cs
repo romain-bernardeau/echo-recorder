@@ -61,13 +61,15 @@ public sealed class Summarizer : ISummarizer
     private readonly IChatClient _client;
     private readonly IChatClient? _geminiChat;
     private readonly IChatClient? _cloudflareChat;
+    private readonly IChatClient? _openRouterChat;
 
     public Summarizer(IChatClient? client = null, IChatClient? geminiChat = null, Func<string, string?>? env = null,
-        IChatClient? cloudflareChat = null)
+        IChatClient? cloudflareChat = null, IChatClient? openRouterChat = null)
     {
         _client = client ?? new MistralClient();
         _geminiChat = geminiChat;
         _cloudflareChat = cloudflareChat;
+        _openRouterChat = openRouterChat;
         _ = env; // kept for ctor compatibility
     }
 
@@ -79,6 +81,8 @@ public sealed class Summarizer : ISummarizer
             return (_geminiChat, LlmProvider.NonEmpty(settings.GeminiCrModel, EchoConstants.DefaultGeminiCrModel), LlmProvider.Gemini);
         if (LlmProvider.IsCloudflare(settings.CrProvider) && _cloudflareChat is not null)
             return (_cloudflareChat, LlmProvider.NonEmpty(settings.CloudflareCrModel, EchoConstants.DefaultCloudflareCrModel), LlmProvider.Cloudflare);
+        if (LlmProvider.Normalize(settings.CrProvider) == LlmProvider.OpenRouter && _openRouterChat is not null)
+            return (_openRouterChat, LlmProvider.NonEmpty(settings.OpenRouterCrModel, EchoConstants.DefaultOpenRouterCrModel), LlmProvider.OpenRouter);
         // Same model as the CR (mistral_cr_model); postprocess_model is for the LLM correction only.
         var model = LlmProvider.NonEmpty(settings.MistralCrModel, MinutesGenerator.DefaultModel);
         return (_client, model, LlmProvider.Mistral);

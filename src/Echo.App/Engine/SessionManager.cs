@@ -458,10 +458,10 @@ public sealed class SessionManager
         var s = _settings.Current;
 
         // Provider-aware key resolution: transcription and CR can each run on Mistral,
-        // Gemini or Cloudflare, so pick the matching key for each. Only the transcription
-        // key is a hard blocker (nothing can be produced without a transcript); a missing
-        // CR key surfaces as a per-step error later.
-        var trProv = Echo.Ai.LlmProvider.Normalize(s.TranscriptionProvider);
+        // Gemini or Cloudflare (CR also on OpenRouter), so pick the matching key for each. Only
+        // the transcription key is a hard blocker (nothing can be produced without a transcript);
+        // a missing CR key surfaces as a per-step error later.
+        var trProv = TranscriptionProviderOf(s);
         var crProv = Echo.Ai.LlmProvider.Normalize(s.CrProvider);
         var transcribeKey = _secret.ResolveKeyFor(trProv);
         var crKey = _secret.ResolveKeyFor(crProv);
@@ -480,7 +480,7 @@ public sealed class SessionManager
         if (transcribe && string.IsNullOrWhiteSpace(transcribeKey))
         {
             // No key for the chosen engine: use another one right away if it has a key.
-            var alt = s.AutoFallbackProvider ? AltProvider(trProv) : null;
+            var alt = s.AutoFallbackProvider ? AltProvider(trProv, transcription: true) : null;
             if (alt is not null)
             {
                 _notifier.Notify(_i18n.T("nf_fallback").Replace("{from}", ProviderName(trProv))
@@ -678,7 +678,7 @@ public sealed class SessionManager
     private async Task<(bool Ok, Exception? Error, AppSettings Used)> RunWithFallbackAsync(
         Func<AppSettings, string, Task> step, AppSettings s, bool transcription, string key, string label)
     {
-        var prov = Echo.Ai.LlmProvider.Normalize(transcription ? s.TranscriptionProvider : s.CrProvider);
+        var prov = transcription ? TranscriptionProviderOf(s) : Echo.Ai.LlmProvider.Normalize(s.CrProvider);
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
@@ -688,7 +688,7 @@ public sealed class SessionManager
         }
         catch (Echo.Ai.LlmApiException ex) when (CanFallback(ex, s))
         {
-            var alt = AltProvider(prov);
+            var alt = AltProvider(prov, transcription);
             if (alt is null) return (false, ex, s);
             var altKey = _secret.ResolveKeyFor(alt)!;
             Log.Error($"{label} ({ProviderName(prov)}), trying {ProviderName(alt)}", ex);
@@ -769,6 +769,7 @@ public sealed class SessionManager
     {
         Echo.Ai.LlmProvider.Gemini => Echo.Ai.LlmProvider.NonEmpty(s.GeminiCrModel, EchoConstants.DefaultGeminiCrModel),
         Echo.Ai.LlmProvider.Cloudflare => Echo.Ai.LlmProvider.NonEmpty(s.CloudflareCrModel, EchoConstants.DefaultCloudflareCrModel),
+        Echo.Ai.LlmProvider.OpenRouter => Echo.Ai.LlmProvider.NonEmpty(s.OpenRouterCrModel, EchoConstants.DefaultOpenRouterCrModel),
         _ => Echo.Ai.LlmProvider.NonEmpty(s.MistralCrModel, "ministral-8b-latest"),
     };
 
@@ -781,13 +782,23 @@ public sealed class SessionManager
         return copy;
     }
 
-    /// <summary>First OTHER provider (Mistral, Gemini, Cloudflare order) whose key is stored;
-    /// null when none. Cloudflare needs its account id too.</summary>
-    private string? AltProvider(string current)
+    /// <summary>Transcription engine in force. A chat-only provider (OpenRouter, e.g. hand-edited
+    /// into settings.json) cannot transcribe: Mistral (Voxtral) is used, as the Transcriber does.</summary>
+    internal static string TranscriptionProviderOf(AppSettings s)
+    {
+        var p = Echo.Ai.LlmProvider.Normalize(s.TranscriptionProvider);
+        return Echo.Ai.LlmProvider.CanTranscribe(p) ? p : Echo.Ai.LlmProvider.Mistral;
+    }
+
+    /// <summary>First OTHER provider (Mistral, Gemini, Cloudflare, OpenRouter order) whose key is
+    /// stored; null when none. Cloudflare needs its account id too. A transcription never falls
+    /// back to OpenRouter (chat only).</summary>
+    internal string? AltProvider(string current, bool transcription)
     {
         foreach (var p in Echo.Ai.LlmProvider.All)
         {
             if (p == current) continue;
+            if (transcription && !Echo.Ai.LlmProvider.CanTranscribe(p)) continue;
             if (string.IsNullOrWhiteSpace(_secret.ResolveKeyFor(p))) continue;
             if (p == Echo.Ai.LlmProvider.Cloudflare && string.IsNullOrWhiteSpace(_settings.Current.CloudflareAccountId)) continue;
             return p;

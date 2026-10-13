@@ -40,15 +40,18 @@ public sealed class MinutesGenerator : IMinutesGenerator
     private readonly IChatClient _client;
     private readonly IChatClient? _geminiChat;
     private readonly IChatClient? _cloudflareChat;
+    private readonly IChatClient? _openRouterChat;
     private readonly Vocabulary _vocab;
     private readonly Func<string, string?> _env;
 
     public MinutesGenerator(IChatClient? client = null, IChatClient? geminiChat = null,
-        Vocabulary? vocab = null, Func<string, string?>? env = null, IChatClient? cloudflareChat = null)
+        Vocabulary? vocab = null, Func<string, string?>? env = null, IChatClient? cloudflareChat = null,
+        IChatClient? openRouterChat = null)
     {
         _client = client ?? new MistralClient();
         _geminiChat = geminiChat;
         _cloudflareChat = cloudflareChat;
+        _openRouterChat = openRouterChat;
         _vocab = vocab ?? new Vocabulary();
         _env = env ?? Environment.GetEnvironmentVariable;
     }
@@ -61,6 +64,8 @@ public sealed class MinutesGenerator : IMinutesGenerator
             return (_geminiChat, LlmProvider.NonEmpty(settings.GeminiCrModel, EchoConstants.DefaultGeminiCrModel), LlmProvider.Gemini);
         if (LlmProvider.IsCloudflare(settings.CrProvider) && _cloudflareChat is not null)
             return (_cloudflareChat, LlmProvider.NonEmpty(settings.CloudflareCrModel, EchoConstants.DefaultCloudflareCrModel), LlmProvider.Cloudflare);
+        if (LlmProvider.Normalize(settings.CrProvider) == LlmProvider.OpenRouter && _openRouterChat is not null)
+            return (_openRouterChat, LlmProvider.NonEmpty(settings.OpenRouterCrModel, EchoConstants.DefaultOpenRouterCrModel), LlmProvider.OpenRouter);
         // Env var (MINUTES_MODEL) wins, then the user's mistral_cr_model setting, then the default.
         var model = _env(EnvModel) is { Length: > 0 } m ? m : LlmProvider.NonEmpty(settings.MistralCrModel, DefaultModel);
         return (_client, model, LlmProvider.Mistral);

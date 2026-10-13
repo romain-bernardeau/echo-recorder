@@ -128,11 +128,13 @@ public sealed class AppServices
             // lets Whisper detect; an explicit FR/EN choice is passed on, which keeps a French
             // meeting from being decoded as English on a noisy passage.
             language: () => settings.Current.TranscriptionLang is "fr" or "en" ? settings.Current.TranscriptionLang : null);
+        // OpenRouter: chat only (CR, summary, postprocess); it has no transcription API.
+        var openRouter = new OpenRouterClient(retryLog: retryLog);
         var vocab = new Vocabulary();
         var transcriber = new Transcriber(mistral, mistral, gemini, gemini, vocab,
-            cloudflareTranscribe: cloudflare, cloudflareChat: cloudflare);
-        var minutes = new MinutesGenerator(mistral, gemini, vocab, cloudflareChat: cloudflare);
-        var summarizer = new Summarizer(mistral, gemini, cloudflareChat: cloudflare);
+            cloudflareTranscribe: cloudflare, cloudflareChat: cloudflare, openRouterChat: openRouter);
+        var minutes = new MinutesGenerator(mistral, gemini, vocab, cloudflareChat: cloudflare, openRouterChat: openRouter);
+        var summarizer = new Summarizer(mistral, gemini, cloudflareChat: cloudflare, openRouterChat: openRouter);
         // Log wired (it was NOT: `new TeamsMonitor()` left every [Echo.Teams] diagnostic
         // silent in prod — the 2026-07-16 compact-view meeting left no trace). Alert = the
         // rare user-facing toast (compact view → "agrandissez la fenêtre").

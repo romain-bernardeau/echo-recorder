@@ -128,6 +128,9 @@ public sealed class Bridge
             case "cloudflare_key_present": return _s.Secret.CloudflareKeyPresent();
             case "save_cloudflare_key": return SaveCloudflareKey(Str(a, 0));
             case "test_cloudflare_key": return await TestCloudflareKeyAsync(StrN(a, 0), StrN(a, 1));
+            case "openrouter_key_present": return _s.Secret.OpenRouterKeyPresent();
+            case "save_openrouter_key": return SaveOpenRouterKey(Str(a, 0));
+            case "test_openrouter_key": return await TestOpenRouterKeyAsync(StrN(a, 0));
             case "list_models": return await ListModelsAsync(Str(a, 0), StrN(a, 1));
             case "probe_model": return await ProbeModelAsync(Str(a, 0), Str(a, 1));
             case "probe_transcribe_model": return await ProbeTranscribeModelAsync(Str(a, 0), Str(a, 1));
@@ -210,7 +213,7 @@ public sealed class Bridge
             try
             {
                 var cur = _s.Settings.Current;
-                _keyCache = _s.Secret.KeyPresentFor(Echo.Ai.LlmProvider.Normalize(cur.TranscriptionProvider))
+                _keyCache = _s.Secret.KeyPresentFor(SessionManager.TranscriptionProviderOf(cur))
                          && _s.Secret.KeyPresentFor(Echo.Ai.LlmProvider.Normalize(cur.CrProvider));
             }
             catch { _keyCache = false; }
@@ -243,6 +246,7 @@ public sealed class Bridge
             key_present = _s.Secret.KeyPresent(),
             google_key_present = _s.Secret.GoogleKeyPresent(),
             cloudflare_key_present = _s.Secret.CloudflareKeyPresent(),
+            openrouter_key_present = _s.Secret.OpenRouterKeyPresent(),
             autostart = AutoStart.IsEnabled(),
             has_backup = Updater.HasBackup(AppContext.BaseDirectory),
             rec_dir = _s.Paths.RecordingsDir,
@@ -911,6 +915,46 @@ public sealed class Bridge
         catch (Exception ex) { Log.Error("save_cloudflare_key", ex); return false; }
     }
 
+    private bool SaveOpenRouterKey(string key)
+    {
+        if (string.IsNullOrWhiteSpace(key)) return false;
+        try { _s.Secret.SaveOpenRouter(key); return true; }
+        catch (Exception ex) { Log.Error("save_openrouter_key", ex); return false; }
+    }
+
+    /// <summary>Validate an OpenRouter key (GET /key, spends nothing), then probe the configured
+    /// CR model so the user learns at once whether the CR can run there.</summary>
+    private async Task<object> TestOpenRouterKeyAsync(string? key)
+    {
+        var k = string.IsNullOrWhiteSpace(key) ? _s.Secret.ResolveOpenRouterKey() : key!.Trim();
+        if (string.IsNullOrWhiteSpace(k))
+            return new { ok = false, msg = L("Clé OpenRouter absente.", "OpenRouter key missing."), tier = "unknown", cr_model_ok = false };
+        try
+        {
+            var probe = await CatalogOpenRouter.ProbeKeyAsync(k, CancellationToken.None);
+            if (!probe.Ok)
+            {
+                var failMsg = probe.Status is 401 or 403
+                    ? L("Clé OpenRouter refusée (HTTP " + probe.Status + "). Vérifiez la clé sur openrouter.ai/keys.",
+                        "OpenRouter key refused (HTTP " + probe.Status + "). Check the key on openrouter.ai/keys.")
+                    : StatusMessage(probe.Status, probe.ServerMessage, null);
+                return new { ok = false, msg = failMsg, tier = "unknown", cr_model_ok = false, status = probe.Status };
+            }
+            var crModel = Echo.Ai.LlmProvider.NonEmpty(_s.Settings.Current.OpenRouterCrModel, EchoConstants.DefaultOpenRouterCrModel);
+            var cr = await CatalogOpenRouter.ProbeChatModelAsync(k, crModel, CancellationToken.None);
+            string msg = cr.Ok
+                ? L($"Clé valide. Le modèle CR {crModel} répond.", $"Valid key. The minutes model {crModel} answers.")
+                : L($"Clé valide. Modèle CR {crModel} non vérifié ({ProbeDetail(cr)}).",
+                    $"Valid key. Minutes model {crModel} not verified ({ProbeDetail(cr)}).");
+            return new { ok = true, msg, tier = "unknown", cr_model_ok = cr.Ok, cr_model = crModel, status = cr.Status };
+        }
+        catch (Exception ex)
+        {
+            Log.Error("test_openrouter_key", ex);
+            return new { ok = false, msg = L("Test OpenRouter échoué : ", "OpenRouter test failed: ") + ex.Message, tier = "unknown", cr_model_ok = false };
+        }
+    }
+
     /// <summary>
     /// Validate a Cloudflare Workers AI token together with the account id (the REST URL
     /// needs both): stores a non-empty <paramref name="accountId"/> first, then makes one
@@ -1041,6 +1085,7 @@ public sealed class Bridge
 
     private static readonly Echo.Ai.MistralClient CatalogMistral = new(Http);
     private static readonly Echo.Ai.GeminiClient CatalogGemini = new(Http);
+    private static readonly Echo.Ai.OpenRouterClient CatalogOpenRouter = new(Http);
     private Echo.Ai.CloudflareClient? _catalogCloudflare;
     /// <summary>Account-scoped, hence per Bridge (reads the account id from settings at call time).</summary>
     private Echo.Ai.CloudflareClient CatalogCloudflare
@@ -1088,17 +1133,24 @@ public sealed class Bridge
             return (CatalogMistral, string.IsNullOrWhiteSpace(explicitKey) ? _s.Secret.ResolveKey() : explicitKey!.Trim(), p);
         if (p == Echo.Ai.LlmProvider.Cloudflare)
             return (CatalogCloudflare, string.IsNullOrWhiteSpace(explicitKey) ? _s.Secret.ResolveCloudflareKey() : explicitKey!.Trim(), p);
+        if (p == Echo.Ai.LlmProvider.OpenRouter)
+            return (CatalogOpenRouter, string.IsNullOrWhiteSpace(explicitKey) ? _s.Secret.ResolveOpenRouterKey() : explicitKey!.Trim(), p);
         return (null, null, p);
     }
 
-    /// <summary>list_models(provider, key?) → { ok, models:[{id,chat,transcribe}], msg }.</summary>
+    /// <summary>list_models(provider, key?) → { ok, models:[{id,chat,transcribe,free}], msg }.
+    /// OpenRouter's catalogue is public: it is listed even before a key is stored.</summary>
     private async Task<object> ListModelsAsync(string provider, string? explicitKey)
     {
         var (client, key, p) = ResolveProvider(provider, explicitKey);
         if (client is null)
             return new { ok = false, models = Array.Empty<object>(), msg = L("Fournisseur inconnu.", "Unknown provider.") };
         if (string.IsNullOrWhiteSpace(key))
-            return new { ok = false, models = Array.Empty<object>(), msg = L("Enregistrez une clé pour charger la liste.", "Save a key to load the list.") };
+        {
+            if (p != Echo.Ai.LlmProvider.OpenRouter)
+                return new { ok = false, models = Array.Empty<object>(), msg = L("Enregistrez une clé pour charger la liste.", "Save a key to load the list.") };
+            key = "";
+        }
         try
         {
             var models = CachedModels(p, key);
@@ -1110,7 +1162,7 @@ public sealed class Bridge
             return new
             {
                 ok = true,
-                models = models.Select(m => new { id = m.Id, chat = m.Chat, transcribe = m.Transcribe }).ToList(),
+                models = models.Select(m => new { id = m.Id, chat = m.Chat, transcribe = m.Transcribe, free = m.Free }).ToList(),
                 msg = "",
             };
         }

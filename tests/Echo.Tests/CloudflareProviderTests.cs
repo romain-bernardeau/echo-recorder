@@ -251,10 +251,10 @@ public class CloudflareProviderTests
     {
         Assert.True(LlmProvider.IsCloudflare(" Cloudflare "));
         Assert.Equal("cloudflare", LlmProvider.Normalize("CLOUDFLARE"));
-        Assert.Equal("mistral", LlmProvider.Normalize("gemini"));   // retired provider → Mistral
+        Assert.Equal("gemini", LlmProvider.Normalize("gemini"));    // offered again (5.6.1 had retired it)
         Assert.Equal("mistral", LlmProvider.Normalize("openai"));   // unknown → historical default
         Assert.Equal("Cloudflare", LlmProvider.DisplayName("cloudflare"));
-        Assert.Equal(new[] { "mistral", "cloudflare" }, LlmProvider.All.ToArray());   // Gemini retired (free plans only)
+        Assert.Equal(new[] { "mistral", "gemini", "cloudflare", "openrouter" }, LlmProvider.All.ToArray());
     }
 
     [Fact]

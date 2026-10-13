@@ -26,12 +26,26 @@ public static class ContextBudget
                 return 1_000_000;
             case LlmProvider.Cloudflare:
                 return 24_000;
+            case LlmProvider.OpenRouter:
+                // OpenRouter hosts hundreds of models: use the window its catalogue announced
+                // (remembered by OpenRouterClient.ListModelsAsync), else a prudent 32 k.
+                return OpenRouterWindows.TryGetValue(model ?? "", out var w) && w > 0 ? w : 32_000;
             default:
                 // Legacy open-weight 7B / Mixtral endpoints are 32 k; large/medium/small/ministral/
                 // magistral/nemo are 128 k.
                 if (m.Contains("7b") || m.Contains("mixtral")) return 32_000;
                 return 128_000;
         }
+    }
+
+    /// <summary>OpenRouter model id → context_length (tokens), as read from its public catalogue.</summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> OpenRouterWindows
+        = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Record the context window an OpenRouter catalogue announced for a model.</summary>
+    public static void RememberOpenRouterWindow(string model, int tokens)
+    {
+        if (!string.IsNullOrWhiteSpace(model) && tokens > 0) OpenRouterWindows[model.Trim()] = tokens;
     }
 
     /// <summary>Tokens kept free for the answer. Workers AI counts max_tokens inside the

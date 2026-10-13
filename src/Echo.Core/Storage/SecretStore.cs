@@ -189,12 +189,45 @@ public sealed class SecretStore : ISecretStore
         Environment.SetEnvironmentVariable(EchoConstants.EnvCloudflareApiToken, null);
     }
 
+    // ── OpenRouter API key ───────────────────────────────────────────────────────
+    // Same scheme as the Cloudflare token: its own DPAPI file (secret_openrouter.bin), env
+    // override OPENROUTER_API_KEY.
+
+    public string? ResolveOpenRouterKey()
+    {
+        var env = Environment.GetEnvironmentVariable(EchoConstants.EnvOpenRouterApiKey);
+        if (!string.IsNullOrWhiteSpace(env)) return env.Trim();
+        var key = LoadDpapiFile(_paths.SecretOpenRouterBin);
+        if (!string.IsNullOrWhiteSpace(key))
+            Environment.SetEnvironmentVariable(EchoConstants.EnvOpenRouterApiKey, key);
+        return key;
+    }
+
+    public bool OpenRouterKeyPresent() => !string.IsNullOrWhiteSpace(ResolveOpenRouterKey());
+
+    public void SaveOpenRouter(string key)
+    {
+        key = key?.Trim() ?? "";
+        if (key.Length == 0) return;
+        var enc = ProtectedData.Protect(Encoding.UTF8.GetBytes(key), EchoConstants.DpapiEntropy, DataProtectionScope.CurrentUser);
+        Directory.CreateDirectory(_paths.SettingsDir);
+        File.WriteAllBytes(_paths.SecretOpenRouterBin, enc);
+        Environment.SetEnvironmentVariable(EchoConstants.EnvOpenRouterApiKey, key);
+    }
+
+    public void ClearOpenRouter()
+    {
+        try { if (File.Exists(_paths.SecretOpenRouterBin)) File.Delete(_paths.SecretOpenRouterBin); } catch { /* best effort */ }
+        Environment.SetEnvironmentVariable(EchoConstants.EnvOpenRouterApiKey, null);
+    }
+
     // ── by provider id ───────────────────────────────────────────────────────────
 
     public string? ResolveKeyFor(string? provider) => (provider ?? "").Trim().ToLowerInvariant() switch
     {
         EchoConstants.ProviderGemini => ResolveGoogleKey(),
         EchoConstants.ProviderCloudflare => ResolveCloudflareKey(),
+        EchoConstants.ProviderOpenRouter => ResolveOpenRouterKey(),
         EchoConstants.ProviderMistral or "" => ResolveKey(),
         _ => null,
     };

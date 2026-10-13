@@ -954,8 +954,8 @@ function renderSettings(){
   </div>
   <div class="set-card" id="set-integ"><h3>${t('card_prov')}</h3>
     <div class="set-item"><div class="lbl"><span style="margin-top:0">${t('prov_intro')}</span></div></div>
-    <div class="set-item"><div class="lbl"><b>${t('set_transc_prov')}</b><span>${t('set_transc_prov_sub')}</span></div>${seg('transcription_provider',s.transcription_provider||'mistral',[['mistral',t('prov_voxtral')],['cloudflare',t('prov_cloudflare')]])}</div>
-    <div class="set-item"><div class="lbl"><b>${t('set_cr_prov')}</b><span>${t('set_cr_prov_sub')}</span></div>${seg('cr_provider',s.cr_provider||'mistral',[['mistral',t('prov_mistral')],['cloudflare',t('prov_cloudflare')]])}</div>
+    <div class="set-item"><div class="lbl"><b>${t('set_transc_prov')}</b><span>${t('set_transc_prov_sub')}</span></div>${seg('transcription_provider',s.transcription_provider||'mistral',[['mistral',t('prov_voxtral')],['gemini',t('prov_gemini')],['cloudflare',t('prov_cloudflare')]])}</div>
+    <div class="set-item"><div class="lbl"><b>${t('set_cr_prov')}</b><span>${t('set_cr_prov_sub')}</span></div>${seg('cr_provider',s.cr_provider||'mistral',[['mistral',t('prov_mistral')],['gemini',t('prov_gemini')],['cloudflare',t('prov_cloudflare')],['openrouter',t('prov_openrouter')]])}</div>
     <div class="set-item"><div class="lbl"><b>${t('set_autofb')}</b><span>${t('set_autofb_sub')}</span></div>${tog('auto_fallback_provider',s.auto_fallback_provider!==false)}</div>
     <div class="prov-head"><div class="plogo" style="background:#ff7000">M</div><div><b>${t('prov_head_mistral')}</b><span>${t('prov_head_mistral_sub')}</span></div></div>
     <div class="set-item"><div class="lbl"><b>${t('set_key')}</b><span id="keyStatus">${META.key_present?t('key_set'):t('key_absent')}</span></div><div class="field" style="max-width:340px;flex:1"><input id="keyInput" type="password" placeholder="${t('key_ph')}"><button class="btn primary" id="saveKey">${t('save')}</button></div></div>
@@ -963,12 +963,21 @@ function renderSettings(){
     <div class="set-item"><div class="lbl"><b>${t('model_transc')}</b><span>${t('model_transc_sub')}</span></div>${modelSel('mistral','mistral_transcribe_model',s.mistral_transcribe_model||'voxtral-mini-2602','transcribe')}</div>
     <div class="set-item"><div class="lbl"><b>${t('model_cr')}</b><span>${t('model_cr_sub')}</span></div>${modelSel('mistral','mistral_cr_model',s.mistral_cr_model||'ministral-8b-latest','chat')}</div>
     <div class="set-item"><div class="lbl"><b>${t('model_pp')}</b><span>${t('model_pp_sub')}</span></div>${modelSel('mistral','postprocess_model',s.postprocess_model||'ministral-8b-latest','chat')}</div>
+    <div class="prov-head"><div class="plogo" style="background:#4285f4">G</div><div><b>${t('prov_head_gemini')}</b><span>${t('prov_head_gemini_sub')}</span></div></div>
+    <div class="set-item"><div class="lbl"><b>${t('set_gkey')}</b><span id="gkeyStatus">${META.google_key_present?t('key_set'):t('key_absent')}</span></div><div class="field" style="max-width:340px;flex:1"><input id="gkeyInput" type="password" placeholder="${t('gkey_ph')}"><button class="btn primary" id="saveGkey">${t('save')}</button></div></div>
+    <div class="set-item"><div class="lbl"><b>${t('set_gtestkey')}</b><span>${t('set_gtestkey_sub')}</span><span class="prov-status" id="gkeyTestStatus">${t('key_test_pending')}</span></div><button class="btn" id="testGkey">${t('test')}</button></div>
+    <div class="set-item"><div class="lbl"><b>${t('gmodel_transc')}</b><span>${t('gmodel_transc_sub')}</span></div>${modelSel('gemini','gemini_transcribe_model',s.gemini_transcribe_model||'gemini-3.6-flash','transcribe')}</div>
+    <div class="set-item"><div class="lbl"><b>${t('gmodel_cr')}</b><span>${t('gmodel_cr_sub')}</span></div>${modelSel('gemini','gemini_cr_model',s.gemini_cr_model||'gemini-3.6-flash','chat')}</div>
     <div class="prov-head"><div class="plogo" style="background:#f6821f">C</div><div><b>${t('prov_head_cloudflare')}</b><span>${t('prov_head_cloudflare_sub')}</span></div></div>
     <div class="set-item"><div class="lbl"><b>${t('set_cacct')}</b><span>${t('set_cacct_sub')}</span></div><div class="field" style="max-width:340px;flex:1"><input id="cfAcctInput" value="${esc(s.cloudflare_account_id||'')}" placeholder="${t('cacct_ph')}" spellcheck="false"></div></div>
     <div class="set-item"><div class="lbl"><b>${t('set_ckey')}</b><span id="ckeyStatus">${META.cloudflare_key_present?t('key_set'):t('key_absent')}</span></div><div class="field" style="max-width:340px;flex:1"><input id="ckeyInput" type="password" placeholder="${t('ckey_ph')}"><button class="btn primary" id="saveCkey">${t('save')}</button></div></div>
     <div class="set-item"><div class="lbl"><b>${t('set_ctestkey')}</b><span>${t('set_ctestkey_sub')}</span><span class="prov-status" id="ckeyTestStatus">${t('key_test_pending')}</span></div><button class="btn" id="testCkey">${t('test')}</button></div>
     <div class="set-item"><div class="lbl"><b>${t('cmodel_transc')}</b><span>${t('cmodel_transc_sub')}</span></div>${modelSel('cloudflare','cloudflare_transcribe_model',s.cloudflare_transcribe_model||'@cf/openai/whisper-large-v3-turbo','transcribe')}</div>
     <div class="set-item"><div class="lbl"><b>${t('cmodel_cr')}</b><span>${t('cmodel_cr_sub')}</span></div>${modelSel('cloudflare','cloudflare_cr_model',s.cloudflare_cr_model||'@cf/meta/llama-3.3-70b-instruct-fp8-fast','chat')}</div>
+    <div class="prov-head"><div class="plogo" style="background:#6467f2">O</div><div><b>${t('prov_head_openrouter')}</b><span>${t('prov_head_openrouter_sub')} <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:var(--accent)">openrouter.ai/keys</a></span></div></div>
+    <div class="set-item"><div class="lbl"><b>${t('set_okey')}</b><span id="okeyStatus">${META.openrouter_key_present?t('key_set'):t('key_absent')}</span></div><div class="field" style="max-width:340px;flex:1"><input id="okeyInput" type="password" placeholder="${t('okey_ph')}"><button class="btn primary" id="saveOkey">${t('save')}</button></div></div>
+    <div class="set-item"><div class="lbl"><b>${t('set_otestkey')}</b><span>${t('set_otestkey_sub')}</span><span class="prov-status" id="okeyTestStatus">${t('key_test_pending')}</span></div><button class="btn" id="testOkey">${t('test')}</button></div>
+    <div class="set-item"><div class="lbl"><b>${t('omodel_cr')}</b><span>${t('omodel_cr_sub')}</span></div>${modelSel('openrouter','openrouter_cr_model',s.openrouter_cr_model||'google/gemma-4-31b-it:free','chat')}</div>
     <div class="integ" style="border-top:1px solid var(--line)"><div class="ilogo" style="background:#6264a7">T</div><div class="iinfo"><b>Microsoft Teams</b><span>${t('integ_teams_sub')}</span></div><button class="btn sm" id="importTeams2">${t('import_transcript')}</button></div>
   </div>
   <div class="set-card" id="set-stock"><h3>${t('card_stock')}</h3>
@@ -1000,12 +1009,12 @@ function renderSettings(){
    model in "Fournisseurs & modèles" and believe the engine had switched. The choice
    now lives in one place only; the Transcription and Compte rendu cards just state
    what is in force, engine AND model, and link back to it. */
-function provName(id){return {mistral:'Mistral',gemini:'Gemini',cloudflare:'Cloudflare'}[id]||'Mistral';}
+function provName(id){return {mistral:'Mistral',gemini:'Gemini',cloudflare:'Cloudflare',openrouter:'OpenRouter'}[id]||'Mistral';}
 function provSummary(kind){
   const s=META.settings||{};
   const id=(kind==='cr'?s.cr_provider:s.transcription_provider)||'mistral';
   const model=kind==='cr'
-    ? (id==='gemini'?s.gemini_cr_model:id==='cloudflare'?s.cloudflare_cr_model:s.mistral_cr_model)
+    ? (id==='gemini'?s.gemini_cr_model:id==='cloudflare'?s.cloudflare_cr_model:id==='openrouter'?s.openrouter_cr_model:s.mistral_cr_model)
     : (id==='gemini'?s.gemini_transcribe_model:id==='cloudflare'?s.cloudflare_transcribe_model:s.mistral_transcribe_model);
   return esc(provName(id))+(model?' · '+esc(model):'');
 }
@@ -1054,12 +1063,18 @@ async function loadStorage(){
 
 /* Models usable on the providers' free plans (checked on a free Mistral key on 2026-10-13:
    mistral-small/medium answer 429 with a 0 req/min allowance there). Cloudflare: within the
-   daily free Workers AI allocation. Shown as a "Free" tag in the pickers. */
+   daily free Workers AI allocation. Gemini: the flash family is in the Google AI Studio free
+   quota. OpenRouter: the catalogue itself says which models cost nothing (list_models "free",
+   remembered per provider in FREE_LISTED). Shown as a "Free" tag in the pickers. */
 const FREE_MODELS={
   mistral:['ministral-8b-latest','ministral-3b-latest','open-mistral-nemo','voxtral-mini-latest','voxtral-mini-2602'],
   cloudflare:['@cf/openai/whisper-large-v3-turbo','@cf/meta/llama-3.3-70b-instruct-fp8-fast'],
 };
-function isFreeModel(prov,id){return (FREE_MODELS[prov]||[]).includes(id);}
+const FREE_LISTED={};
+function isFreeModel(prov,id){
+  if(prov==='gemini')return /flash/i.test(id||'');
+  return (FREE_MODELS[prov]||[]).includes(id)||!!(FREE_LISTED[prov]&&FREE_LISTED[prov].has(id));
+}
 function showFreeTag(p,id){const tg=$('[data-model-freetag]',p);if(tg)tg.style.display=isFreeModel(p.dataset.prov,id)?'':'none';}
 /* ── Providers & models: fill the per-task <select>s from list_models(provider) ──
    On failure (no key, network) the picker degrades to a free-text field with a hint. */
@@ -1080,10 +1095,10 @@ function fillModelPick(p,r){
     ind.className='model-ind';ind.textContent=(r&&r.msg)||t('model_nolist');
     return;
   }
-  const kind=p.dataset.kind;
+  const kind=p.dataset.kind,prov=p.dataset.prov;
+  FREE_LISTED[prov]=new Set((r.models||[]).filter(m=>m.free).map(m=>m.id));
   const ids=(r.models||[]).filter(m=>kind==='transcribe'?m.transcribe:m.chat).map(m=>m.id);
   if(cur&&!ids.includes(cur))ids.unshift(cur);          // current value always selectable
-  const prov=p.dataset.prov;
   ids.sort((a,b)=>isFreeModel(prov,b)-isFreeModel(prov,a));   // free models first (stable sort)
   sel.innerHTML=ids.map(id=>`<option value="${esc(id)}" ${id===cur?'selected':''}>${isFreeModel(prov,id)?'Free · ':''}${esc(id)}</option>`).join('')+`<option value="__other">${t('model_other')}</option>`;
   showFreeTag(p,cur);
@@ -1318,6 +1333,8 @@ function wireSettings(){
   bn('#testKey',async()=>{const b=$('#testKey');b.innerHTML='<span class="spinner dark"></span>';const r=await api().test_key($('#keyInput').value.trim()||null);b.textContent=t('test');toast(r.msg,r&&r.ok?undefined:'err');showKeyTest('#keyTestStatus',r);if(r&&r.ok)loadModelLists('mistral');});
   saveKeyBtn('#saveGkey','#gkeyInput','#gkeyStatus','save_google_key','google_key_present','gkey_saved','gemini');
   bn('#testGkey',async()=>{const b=$('#testGkey');b.innerHTML='<span class="spinner dark"></span>';const r=await api().test_google_key($('#gkeyInput').value.trim()||null);b.textContent=t('test');toast(r.msg,r&&r.ok?undefined:'err');showKeyTest('#gkeyTestStatus',r);if(r&&r.ok)loadModelLists('gemini');});
+  saveKeyBtn('#saveOkey','#okeyInput','#okeyStatus','save_openrouter_key','openrouter_key_present','okey_saved','openrouter');
+  bn('#testOkey',async()=>{const b=$('#testOkey');b.innerHTML='<span class="spinner dark"></span>';const r=await api().test_openrouter_key($('#okeyInput').value.trim()||null);b.textContent=t('test');toast(r.msg,r&&r.ok?undefined:'err');showKeyTest('#okeyTestStatus',r);if(r&&r.ok)loadModelLists('openrouter');});
   saveKeyBtn('#saveCkey','#ckeyInput','#ckeyStatus','save_cloudflare_key','cloudflare_key_present','ckey_saved','cloudflare');
   bn('#testCkey',async()=>{const b=$('#testCkey');b.innerHTML='<span class="spinner dark"></span>';const acct=($('#cfAcctInput')||{value:''}).value.trim();const r=await api().test_cloudflare_key($('#ckeyInput').value.trim()||null,acct||null);b.textContent=t('test');toast(r.msg,r&&r.ok?undefined:'err');showKeyTest('#ckeyTestStatus',r);if(acct){META.settings.cloudflare_account_id=acct;}if(r&&r.ok)loadModelLists('cloudflare');});
   const cfAcct=$('#cfAcctInput');
@@ -1474,7 +1491,7 @@ async function showWhatsNew(){
     if(!META||!META.version)return;
     const s=META.settings||{};const seen=s.last_seen_version||'';
     if(seen===META.version)return;
-    const anyKey=!!(META.key_present||META.google_key_present||META.cloudflare_key_present);
+    const anyKey=!!(META.key_present||META.google_key_present||META.cloudflare_key_present||META.openrouter_key_present);
     const upgraded=!!seen||anyKey;
     await saveSetting('last_seen_version',META.version);
     s.last_seen_version=META.version;

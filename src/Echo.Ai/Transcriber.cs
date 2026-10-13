@@ -64,6 +64,7 @@ public sealed class Transcriber : ITranscriber
     private readonly IChatClient _chat;
     private readonly IChatClient? _geminiChat;
     private readonly IChatClient? _cloudflareChat;
+    private readonly IChatClient? _openRouterChat;
     private readonly Vocabulary _vocab;
     private readonly Func<string, string?> _env;
 
@@ -74,7 +75,8 @@ public sealed class Transcriber : ITranscriber
     public Transcriber(ITranscribeClient? client = null, IChatClient? chat = null,
         ITranscribeClient? geminiTranscribe = null, IChatClient? geminiChat = null,
         Vocabulary? vocab = null, Func<string, string?>? env = null,
-        ITranscribeClient? cloudflareTranscribe = null, IChatClient? cloudflareChat = null)
+        ITranscribeClient? cloudflareTranscribe = null, IChatClient? cloudflareChat = null,
+        IChatClient? openRouterChat = null)
     {
         _transcribe = client ?? new MistralClient();
         _chat = chat ?? (_transcribe as IChatClient) ?? new MistralClient();
@@ -82,6 +84,7 @@ public sealed class Transcriber : ITranscriber
         _geminiChat = geminiChat;
         _cloudflareTranscribe = cloudflareTranscribe;
         _cloudflareChat = cloudflareChat;
+        _openRouterChat = openRouterChat;
         _vocab = vocab ?? new Vocabulary();
         _env = env ?? Environment.GetEnvironmentVariable;
     }
@@ -107,6 +110,8 @@ public sealed class Transcriber : ITranscriber
             return (_geminiChat, LlmProvider.NonEmpty(s.GeminiCrModel, EchoConstants.DefaultGeminiCrModel));
         if (p == LlmProvider.Cloudflare && _cloudflareChat is not null)
             return (_cloudflareChat, LlmProvider.NonEmpty(s.CloudflareCrModel, EchoConstants.DefaultCloudflareCrModel));
+        if (p == LlmProvider.OpenRouter && _openRouterChat is not null)
+            return (_openRouterChat, LlmProvider.NonEmpty(s.OpenRouterCrModel, EchoConstants.DefaultOpenRouterCrModel));
         return (_chat, string.IsNullOrWhiteSpace(s.PostprocessModel) ? Postprocess.DefaultModel : s.PostprocessModel);
     }
 

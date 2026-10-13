@@ -76,7 +76,7 @@ if (-not ((Test-Path (Join-Path $stage "Resources\lexicon_default.txt")) -or (Te
     throw "lexicon_default.txt absent du publish."
 }
 # jamais de donnees locales/client dans le livrable
-foreach ($banned in @("context_bias.txt", "secret.bin", "secret.txt", "settings.json")) {
+foreach ($banned in @("context_bias.txt", "secret.bin", "secret.txt", "secret_google.bin", "secret_cloudflare.bin", "secret_openrouter.bin", "settings.json")) {
     $hit = Get-ChildItem $stage -Recurse -Filter $banned -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($hit) { throw "SECURITE : $banned trouve dans le publish ($($hit.FullName)) — abandon." }
 }

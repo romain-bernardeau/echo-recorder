@@ -24,11 +24,11 @@ du PC et lit les noms des intervenants directement dans la fenêtre Teams.
 - **Enregistrement** de deux pistes (votre micro et le son des participants), lancé à la main,
   par raccourci clavier ou à la détection d'une réunion Teams. Un petit widget reste à l'écran
   pendant la réunion : notes horodatées, captures d'écran, marqueurs.
-- **Transcription** avec Mistral (Voxtral) ou Cloudflare Workers AI (Whisper), locuteurs nommés
-  grâce aux noms lus dans Teams.
+- **Transcription** avec Mistral (Voxtral), Google Gemini ou Cloudflare Workers AI (Whisper),
+  locuteurs nommés grâce aux noms lus dans Teams.
 - **Compte rendu** (.eml prêt à ouvrir dans Outlook, .docx, .md) et résumé court, avec des modèles
-  de CR personnalisables et un vocabulaire métier. Les longues réunions sont résumées par parties
-  automatiquement.
+  de CR personnalisables et un vocabulaire métier, rédigés par Mistral, Gemini, Cloudflare ou tout
+  modèle disponible sur OpenRouter. Les longues réunions sont résumées par parties automatiquement.
 - **Import** d'un fichier audio ou d'une transcription Teams (.docx / .vtt).
 - **Recherche** dans toutes les réunions, missions, gestion du stockage, mises à jour automatiques.
 

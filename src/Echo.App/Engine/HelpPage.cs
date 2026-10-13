@@ -1167,6 +1167,13 @@ footer{max-width:900px;margin:0 auto;padding:20px 22px;color:var(--faint);font-s
     compte (page Workers AI du tableau de bord Cloudflare) et un jeton API avec la permission Workers AI,
     puis Tester. L'audio part par morceaux de 10 minutes. Whisper ne distingue pas les voix : les tours
     sont attribués d'après la piste (vous ou les participants) et les noms Teams relevés pendant la réunion.</li>
+    <li><b>Google Gemini.</b> Transcription et CR avec une clé Google AI Studio (aistudio.google.com) :
+    dans Paramètres, Fournisseurs et modèles, collez la clé, puis Tester. Les modèles flash, marqués
+    Free, entrent dans le quota gratuit de Google.</li>
+    <li><b>OpenRouter.</b> Pour le CR, le résumé et la correction uniquement (pas de transcription) :
+    un accès à de nombreux modèles, dont des gratuits marqués Free. Créez une clé sur openrouter.ai/keys,
+    collez-la dans Paramètres, Fournisseurs et modèles, puis Tester. Les modèles gratuits ont un quota
+    par minute et par jour.</li>
     <li><b>« Échec de la transcription sur Cloudflare : Failed to decode audio file ».</b> Le modèle
     de transcription choisi n'accepte pas le format d'envoi d'Echo. Tous les modèles Whisper de
     Workers AI n'ont pas le même contrat : <b>@cf/openai/whisper-large-v3-turbo</b> est celui
@@ -1624,6 +1631,12 @@ footer{max-width:900px;margin:0 auto;padding:20px 22px;color:var(--faint);font-s
     Cloudflare dashboard) and an API token with the Workers AI permission, then Test. The audio is
     sent in 10 minute pieces. Whisper does not separate voices: turns are attributed from the track
     (you or the participants) and the Teams names picked up during the meeting.</li>
+    <li><b>Google Gemini.</b> Transcription and minutes with a Google AI Studio key
+    (aistudio.google.com): in Settings, Providers and models, paste the key, then Test. The flash
+    models, tagged Free, fit in Google's free quota.</li>
+    <li><b>OpenRouter.</b> For the minutes, the summary and the correction only (no transcription):
+    access to many models, free ones tagged Free. Create a key on openrouter.ai/keys, paste it in
+    Settings, Providers and models, then Test. Free models have a per-minute and per-day quota.</li>
     <li><b>"Transcription failed on Cloudflare: Failed to decode audio file".</b> The chosen
     transcription model does not accept the request format Echo sends. Workers AI Whisper models do
     not share one contract: <b>@cf/openai/whisper-large-v3-turbo</b> is the recommended one (segment

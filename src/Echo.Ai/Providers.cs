@@ -6,9 +6,14 @@ public static class LlmProvider
     public const string Mistral = "mistral";
     public const string Gemini = "gemini";
     public const string Cloudflare = "cloudflare";
+    /// <summary>OpenRouter: chat only (CR, summary, postprocess). It has no audio transcription API.</summary>
+    public const string OpenRouter = "openrouter";
 
     /// <summary>Every known provider id, in fallback preference order.</summary>
-    public static readonly IReadOnlyList<string> All = new[] { Mistral, Cloudflare };
+    public static readonly IReadOnlyList<string> All = new[] { Mistral, Gemini, Cloudflare, OpenRouter };
+
+    /// <summary>False for the chat-only providers (OpenRouter): never pick them for transcription.</summary>
+    public static bool CanTranscribe(string? provider) => Normalize(provider) != OpenRouter;
 
     public static bool IsGemini(string? provider)
         => string.Equals((provider ?? "").Trim(), Gemini, StringComparison.OrdinalIgnoreCase);
@@ -20,7 +25,7 @@ public static class LlmProvider
     public static string Normalize(string? provider)
     {
         var p = (provider ?? "").Trim().ToLowerInvariant();
-        return p == Cloudflare ? p : Mistral;   // Gemini is retired (free plans only): maps to Mistral
+        return p is Gemini or Cloudflare or OpenRouter ? p : Mistral;
     }
 
     /// <summary>Human name for toasts / logs.</summary>
@@ -28,6 +33,7 @@ public static class LlmProvider
     {
         Gemini => "Gemini",
         Cloudflare => "Cloudflare",
+        OpenRouter => "OpenRouter",
         _ => "Mistral",
     };
 
@@ -71,8 +77,10 @@ public interface IChunkedTranscribe
 }
 
 /// <summary>One model exposed by a provider's catalogue endpoint. <see cref="Chat"/> =
-/// usable for CR / summary / postprocess; <see cref="Transcribe"/> = usable for audio.</summary>
-public sealed record ModelInfo(string Id, bool Chat, bool Transcribe);
+/// usable for CR / summary / postprocess; <see cref="Transcribe"/> = usable for audio.
+/// <see cref="Free"/> = the catalogue itself says the model costs nothing (OpenRouter pricing
+/// "0"); false when the catalogue carries no price (Mistral, Gemini, Cloudflare).</summary>
+public sealed record ModelInfo(string Id, bool Chat, bool Transcribe, bool Free = false);
 
 /// <summary>Result of a one-shot model probe (no retry). <c>Status</c> is 0 when the
 /// request never reached the API (network / timeout).</summary>

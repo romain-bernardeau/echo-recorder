@@ -45,6 +45,8 @@ public sealed class StoragePaths
     public string SecretGoogleBin => Path.Combine(SettingsDir, "secret_google.bin");
     /// <summary>DPAPI-encrypted Cloudflare Workers AI token (separate file, same scheme).</summary>
     public string SecretCloudflareBin => Path.Combine(SettingsDir, "secret_cloudflare.bin");
+    /// <summary>DPAPI-encrypted OpenRouter API key (separate file, same scheme).</summary>
+    public string SecretOpenRouterBin => Path.Combine(SettingsDir, "secret_openrouter.bin");
 
     public string ContactsFile => Path.Combine(DataDir, "contacts.json");
     public string WebViewDir => Path.Combine(DataDir, "webview");

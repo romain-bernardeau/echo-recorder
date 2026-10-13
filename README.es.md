@@ -23,11 +23,11 @@ nombres de los participantes directamente en la ventana de Teams.
 - **Grabación** de dos pistas (su micrófono y el audio de los demás participantes), iniciada a
   mano, con un atajo de teclado o al detectar una reunión de Teams. Un pequeño widget permanece en
   pantalla durante la reunión: notas con marca de tiempo, capturas de pantalla, marcadores.
-- **Transcripción** con Mistral (Voxtral) o Cloudflare Workers AI (Whisper), con los oradores
-  identificados gracias a los nombres leídos en Teams.
+- **Transcripción** con Mistral (Voxtral), Google Gemini o Cloudflare Workers AI (Whisper), con los
+  oradores identificados gracias a los nombres leídos en Teams.
 - **Acta** (.eml lista para abrir en Outlook, .docx, .md) y un resumen breve, con plantillas de
-  acta personalizables y un vocabulario profesional. Las reuniones largas se resumen por partes
-  automáticamente.
+  acta personalizables y un vocabulario profesional, redactados por Mistral, Gemini, Cloudflare o
+  cualquier modelo de OpenRouter. Las reuniones largas se resumen por partes automáticamente.
 - **Importación** de un archivo de audio o de una transcripción de Teams (.docx / .vtt).
 - **Búsqueda** en todas las reuniones, misiones, gestión del almacenamiento, actualizaciones
   automáticas.

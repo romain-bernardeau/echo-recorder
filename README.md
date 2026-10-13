@@ -23,10 +23,11 @@ the speakers' names straight from the Teams window.
 - **Recording** of two tracks (your microphone and the other participants), started by hand, with
   a keyboard shortcut or when a Teams meeting is detected. A small widget stays on screen during
   the meeting: timestamped notes, screenshots, markers.
-- **Transcription** with Mistral (Voxtral) or Cloudflare Workers AI (Whisper), with speakers named
-  from Teams.
+- **Transcription** with Mistral (Voxtral), Google Gemini or Cloudflare Workers AI (Whisper), with
+  speakers named from Teams.
 - **Minutes** (.eml ready to open in Outlook, .docx, .md) and a short summary, with custom minutes
-  templates and a domain vocabulary. Long meetings are summarised in parts automatically.
+  templates and a domain vocabulary, written by Mistral, Gemini, Cloudflare or any model on OpenRouter. Long
+  meetings are summarised in parts automatically.
 - **Import** of an audio file or of a Teams transcript (.docx / .vtt).
 - **Search** across all meetings, missions, storage management, automatic updates.
 

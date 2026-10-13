@@ -155,7 +155,13 @@ public interface ISecretStore
     void SaveCloudflare(string key);
     void ClearCloudflare();
 
-    /// <summary>Resolve the key of any provider id ("mistral" | "gemini" | "cloudflare"); null if none / unknown.</summary>
+    /// <summary>Resolve the OpenRouter API key from env or DPAPI; null if none.</summary>
+    string? ResolveOpenRouterKey();
+    bool OpenRouterKeyPresent();
+    void SaveOpenRouter(string key);
+    void ClearOpenRouter();
+
+    /// <summary>Resolve the key of any provider id ("mistral" | "gemini" | "cloudflare" | "openrouter"); null if none / unknown.</summary>
     string? ResolveKeyFor(string? provider);
     bool KeyPresentFor(string? provider);
 }

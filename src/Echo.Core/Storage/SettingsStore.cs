@@ -68,14 +68,12 @@ public sealed class SettingsStore : ISettingsStore
     }
 
     /// <summary>
-    /// 5.6.1: every user runs on free plans (Mistral / Cloudflare). Gemini is no longer offered, and
-    /// mistral-large-latest answers 403 on a free key. Applied on every load, in memory; persisted
-    /// by the next Save.
+    /// Free-plan model defaults: mistral-large-latest answers 403 on a free key. Applied on every
+    /// load, in memory; persisted by the next Save. A gemini provider is left as chosen (5.6.1
+    /// rewrote it to mistral; Gemini is offered again).
     /// </summary>
     private static AppSettings MigrateToFreeTier(AppSettings s)
     {
-        if (string.Equals(s.TranscriptionProvider?.Trim(), "gemini", StringComparison.OrdinalIgnoreCase)) s.TranscriptionProvider = "mistral";
-        if (string.Equals(s.CrProvider?.Trim(), "gemini", StringComparison.OrdinalIgnoreCase)) s.CrProvider = "mistral";
         // 5.6.2: a free key also gets 0 req/min on mistral-small/medium (2026-10-13), so the
         // free default is ministral-8b-latest. One-shot (models_migration), so a paid user can
         // pick mistral-small or mistral-large again afterwards.
