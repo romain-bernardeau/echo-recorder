@@ -1,0 +1,65 @@
+﻿ECHO, enregistreur de réunions
+==============================
+
+Echo enregistre vos réunions Teams (ou en présentiel), transcrit qui a dit quoi,
+et rédige un compte rendu prêt à envoyer — sans robot dans la réunion.
+
+Le dossier Echo partagé contient :
+  - Installation\ : ce dont vous avez besoin pour installer (ce fichier + l'installeur)
+  - MAJ\          : la version courante et les mises à jour (géré automatiquement)
+
+INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
+------------------------------------------------------------
+1. Synchronisez le dossier Echo sur votre PC :
+   bouton « Synchroniser » (ou « Ajouter un raccourci à OneDrive ») dans SharePoint ou Teams.
+   Si vous lisez ce fichier depuis l'Explorateur Windows, c'est déjà fait.
+
+2. Dans le dossier « Installation », double-cliquez sur « Installer Echo.cmd ».
+   L'application s'installe dans votre profil et se lance ; un raccourci
+   « Echo » apparaît dans le menu Démarrer. (Laissez le dossier « MAJ » à côté :
+   l'installeur y lit la version à installer.)
+
+3. Collez votre clé API Mistral dans Paramètres → Intégrations.
+   Chacun utilise SA propre clé. Le guide pas-à-pas est dans l'application :
+   Paramètres → Aide, onglet « Clé API Mistral » (création comprise, ~2 minutes).
+
+MISES À JOUR
+------------
+Automatiques : à chaque démarrage, Echo vérifie ce dossier et vous propose la
+nouvelle version quand il y en a une (Paramètres → « Vérifier maintenant » pour
+forcer). En cas de souci après une mise à jour : Paramètres → « Version
+précédente » restaure l'ancienne installation.
+
+PRÉREQUIS
+---------
+- Windows 11 (ou 10 avec WebView2)
+- Microsoft Teams (nouvelle version)
+- Une clé API Mistral
+
+BON À SAVOIR
+------------
+- Vos enregistrements restent sur VOTRE PC (dossier local, bouton « Ouvrir le
+  dossier local » dans Echo). Seul l'audio à transcrire est envoyé à Mistral
+  (serveurs UE) ; aucun bot ne rejoint la réunion.
+- Prévenez les participants que la réunion est enregistrée : Echo ne le fait
+  pas à votre place.
+- Premier lancement : si les noms des intervenants n'apparaissent pas, quittez
+  complètement Teams une fois (clic droit sur l'icône Teams → Quitter) puis
+  rouvrez-le. Echo pose le réglage nécessaire tout seul.
+
+OÙ EST INSTALLÉ ECHO ?
+----------------------
+- Le programme : %LOCALAPPDATA%\Programs\Echo (dans votre profil, sans droits
+  admin — une copie par utilisateur, ~270 Mo).
+- Vos données, jamais touchées par une mise à jour ou une réinstallation :
+  réglages + clé dans %APPDATA%\Echo, enregistrements dans %LOCALAPPDATA%\Echo
+  (bouton « Ouvrir le dossier local » dans l'application).
+
+DÉSINSTALLATION
+---------------
+Echo apparaît dans Paramètres Windows → Applications (« Applications
+installées ») : cliquez sur Echo → Désinstaller. Aucun droit admin requis.
+Vos enregistrements et réglages sont conservés (supprimez %APPDATA%\Echo et
+%LOCALAPPDATA%\Echo si vous voulez aussi les retirer).
+
+Support : https://github.com/romain-bernardeau/echo-recorder/issues

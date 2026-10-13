@@ -1,0 +1,45 @@
+# Build output
+bin/
+obj/
+dist/
+.vs/
+TestResults/
+*.user
+*.suo
+
+# Secrets and local data: never committed
+.env
+.env.*
+secret*.bin
+settings*.json
+contacts.json
+pending.json
+context_bias.txt
+*.log
+*.pfx
+*.pem
+*.key
+
+# Binaries and packages
+*.exe
+*.zip
+tools/ffmpeg/
+
+# Meeting data
+recordings/
+Captures/
+*.jsonl
+*Transcript*.txt
+Infos r*union.txt
+*.wav
+*.mp3
+*.m4a
+*.eml
+*.docx
+*.vtt
+
+# Internal working notes (kept locally, not published)
+docs/*
+!docs/ARCHITECTURE.md
+src/Echo.App/Assets/help/*.png
+_ul

@@ -1,0 +1,22 @@
+{
+  "//": "Copy this file to 'teams_selectors.json' NEXT TO THE APP EXECUTABLE to override the",
+  "//1": "brittle Teams selectors WITHOUT recompiling. Any key omitted keeps its built-in default.",
+  "//2": "Fragility rank (breaks first): ActiveSpeakerRingClass > NameContainerHints > HangupAutomationIds > process/title heuristics.",
+
+  "ActiveSpeakerRingClass": "vdi-frame-occlusion",
+  "NameContainerHints": [ "cw-container", "lpccommonweb-hovertarget" ],
+  "HangupAutomationIds": [ "hangup-button", "hangup-leave-button", "hangup-main-btn" ],
+  "ActiveSpeakerMarkers": [ "vdi-frame-occlusion", "voice-level-stream-outline" ],
+  "TeamsProcessNames": [ "ms-teams.exe", "teams.exe" ],
+  "NonMeetingTitleHints": [ "calendar", "calendrier", "chat", "activity", "activite", "conversation", "fichiers", "files", "teams et chaines", "communautes" ],
+  "GenericTitles": [ "microsoft teams", "teams", "meeting", "reunion", "meet now", "reunion maintenant", "nouvelle reunion", "new meeting", "appel", "call", "affichage compact de reunion", "affichage compact", "compact meeting view", "compact view", "reunion en cours", "meeting in progress", "meeting join", "join meeting", "rejoindre la reunion", "rejoindre une reunion", "reunion microsoft teams", "microsoft teams reunion", "pre-join", "prejoin", "lobby" ],
+  "CompactViewTitleHints": [ "affichage compact", "compact meeting view", "compact view" ],
+  "SubjectStripPrefixes": [ "meeting request -", "meeting request :", "demande de réunion -", "demande de reunion -", "demande de réunion :", "demande de reunion :", "invitation -", "invitation :", "réunion :", "reunion :", "tr:", "tr :", "re:", "re :", "fw:", "fw :", "fwd:", "fwd :" ],
+  "TranscriptFilenameHints": [ "transcription", "transcript", "teams" ],
+  "MaxDepth": 45,
+  "NodeCap": 25000,
+
+  "//3": "TreeView: 'raw' (default, = lib Python uiautomation) ou 'control'. GARDER 'raw' :",
+  "//4": "la vue Control expose un arbre Teams elague (tuiles vides => locuteurs/roster VIDES).",
+  "TreeView": "raw"
+}

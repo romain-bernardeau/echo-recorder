@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Echo.Core\Echo.Core.csproj" />
+    <ProjectReference Include="..\Echo.Audio\Echo.Audio.csproj" />
+    <ProjectReference Include="..\Echo.Teams\Echo.Teams.csproj" />
+    <ProjectReference Include="..\Echo.Ai\Echo.Ai.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Echo</AssemblyName>
+    <ApplicationIcon>Assets\echo.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2792.45" />
+  </ItemGroup>
+
+  <!-- i18n table (ported from the Python tray_app.STRINGS) embedded in the assembly. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\strings.json" />
+  </ItemGroup>
+
+  <!-- Ship the HTML design next to the exe (ui/index.html + ui/widget.html). -->
+  <ItemGroup>
+    <Content Include="..\..\ui\**">
+      <Link>ui\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Per-user uninstaller shipped next to the exe, powering the Windows "Installed apps" entry
+       (UninstallRegistry). Bundled so it survives silent auto-updates. -->
+  <ItemGroup>
+    <Content Include="..\..\deploy\uninstall.ps1">
+      <Link>uninstall.ps1</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

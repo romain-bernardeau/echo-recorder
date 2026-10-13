@@ -1,0 +1,144 @@
+# lexicon_default.txt - lexique GENERIQUE conseil + achats (FR / EN), livre avec Echo.
+#
+# Sert de "context_bias" pour Voxtral : oriente la transcription vers ces termes
+# metier pour eviter qu'ils soient rendus en mots courants qui se ressemblent
+# (ex. "S2C" -> "essai to see", "COPIL" -> "copilote"). 1 terme par ligne ;
+# les lignes commencant par # sont ignorees ; les espaces internes sont
+# remplaces par "_" automatiquement (contrainte API mono-token).
+#
+# CONSERVATEUR PAR DESIGN : sur-biaiser DEGRADE le taux d'erreur (surtout en FR,
+# ou ce biaisage est "experimental"). On ne garde donc QUE des sigles, noms
+# propres d'outils, et termes composes distinctifs reellement mal transcrits ;
+# PAS de mots courants. Pour desactiver entierement : variable VOXRA_CONTEXT_BIAS=0.
+#
+# Ce fichier est GENERIQUE (aucune donnee client) et VERSIONNE. Le jargon
+# specifique a une mission/un client va dans un fichier LOCAL "context_bias.txt"
+# (a cote, ignore par git, fusionne automatiquement avec celui-ci).
+#
+# FORMAT ETENDU (retrocompatible, cf. Lexicon.cs) :
+#   - un terme simple, un par ligne          -> "SteerCo"
+#   - un mapping variantes deformees=>forme canonique, pour la CORRECTION
+#     post-transcription (les variantes sont remplacees par le canonique) :
+#         "stirco|steer co=>SteerCo"
+#     Le canonique seul alimente le biaisage Voxtral ; les variantes ne servent
+#     qu'a la correction (passe deterministe). Les deux formes peuvent cohabiter.
+
+# --- Sigles conseil / strategie ---
+COPIL
+COMEX
+CODIR
+stirco|stir co|steer co|stireco|stir co.=>SteerCo
+PMO
+MECE
+SCQA
+SWOT
+PESTEL
+TOM
+go/no-go
+
+# --- Sigles finance ---
+ébitda=>EBITDA
+EBIT
+capexe=>capex
+opexe=>opex
+NPV
+VAN
+BFR
+P&L
+ROCE
+
+# --- Methodes / frameworks distinctifs ---
+Pyramid Principle
+issue tree
+hypothesis-driven
+value chain
+chaine de valeur
+growth-share matrix
+target operating model
+three horizons
+kraljik|kraljique|craljic=>Kraljic
+Kraljic matrix
+matrice de Kraljic
+
+# --- Sigles achats ---
+essai to see=>S2C
+essai to pi|essai to pé=>S2P
+P2P
+RFx
+RFI
+RFP
+RFQ
+SRM
+TCO
+MRO
+VMI
+GxP
+
+# --- Achats : termes composes distinctifs ---
+Source-to-Contract
+Source-to-Pay
+Procure-to-Pay
+esourcing|isourcing=>e-sourcing
+eprocurement|iprocurement=>e-procurement
+eauction|iauction=>e-auction
+reverse auction
+enchere inversee
+should-cost
+clean-sheet costing
+strategic sourcing
+category management
+spend cube
+tail spend
+maverick spend
+spend analytics
+addressable spend
+make-or-buy
+supplier rationalisation
+rationalisation fournisseurs
+accord-cadre
+appel d'offres
+mise en concurrence
+panel fournisseurs
+achats indirects
+achats hors production
+massification
+incoterms
+
+# --- Procure-to-Pay : process ---
+three-way match
+purchase requisition
+purchase order
+goods receipt
+punchout
+AP automation
+demande d'achat
+bon de commande
+
+# --- VMS / main d'oeuvre externe ---
+VMS
+MSP
+SOW
+vendor management system
+managed service provider
+statement of work
+contingent workforce
+prestation intellectuelle
+travail temporaire
+
+# --- Outils / editeurs achats (noms propres souvent mal transcrits) ---
+Ivalua
+koupa=>Coupa
+Ariba
+SAP Ariba
+Jaggaer
+Keelvar
+Basware
+Fieldglass
+GEP SMART
+Oracle Fusion
+Per Angusta
+Sievo
+Synertrade
+Tipalti
+Tradeshift
+Workday

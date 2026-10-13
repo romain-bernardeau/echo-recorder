@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- Same lock-down as index.html: only the app's own files, inline code, data: images. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'unsafe-inline'; style-src 'self' file: 'unsafe-inline'; img-src 'self' file: data:; media-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'" />
+<title>Echo, enregistrement</title>
+<style>
+  /* Widget d'enregistrement : carte rectangulaire compacte (réf. Plaud) :
+     ni vague son, ni décor superflu. Deux états : carte / rail vertical. */
+  :root{
+    --bg:#ffffff; --sunken:#eef2f7; --ink:#0b1526; --ink-soft:#52616f; --ink-faint:#61707d;
+    --navy:#0d2f4b; --accent:#1e5aa8; --accent-soft:#eaf1f9; --rec:#e5484d; --rec-soft:#fdecec;
+    --line:rgba(13,42,89,.10); --line-strong:rgba(13,42,89,.16);
+    --font:"Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+    --font-m:"Cascadia Code","Consolas",ui-monospace,monospace;
+    --eo:cubic-bezier(.23,1,.32,1); --ed:cubic-bezier(.32,.72,0,1);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#101c2b; --sunken:#16243579; --ink:#eaf1f9; --ink-soft:#9fb0c2; --ink-faint:#8596a8;
+      --navy:#2f6db0; --accent:#5aa0f0; --accent-soft:#16283d; --rec-soft:#2c1416;
+      --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.17);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#101c2b; --sunken:#16243579; --ink:#eaf1f9; --ink-soft:#9fb0c2; --ink-faint:#8596a8;
+    --navy:#2f6db0; --accent:#5aa0f0; --accent-soft:#16283d; --rec-soft:#2c1416;
+    --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.17);
+  }
+  *{box-sizing:border-box;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg)}
+  body{font-family:var(--font);color:var(--ink);font-size:13px;line-height:1.45;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);border:1px solid var(--line-strong);overflow:hidden}
+
+  /* ---------- en-tête ---------- */
+  .head{display:flex;align-items:center;gap:9px;padding:10px 8px 8px 12px;flex:none;cursor:grab}
+  .head:active{cursor:grabbing}
+  .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(150deg,var(--navy),var(--accent));display:grid;place-items:center;flex:none;box-shadow:inset 0 1.5px 1px rgba(255,255,255,.55)}
+  .logo svg{width:14px;height:14px;color:#fff}
+  .ht{flex:1;min-width:0}
+  .ht b{display:block;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ht span{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--rec);font-weight:600}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--rec);flex:none;animation:pulse 1.3s var(--ed) infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(229,72,77,.45)}50%{opacity:.7;box-shadow:0 0 0 4px rgba(229,72,77,0)}}
+  .hbtn{width:26px;height:26px;flex:none;border:0;border-radius:7px;background:transparent;color:var(--ink-faint);cursor:pointer;display:grid;place-items:center;transition:background .13s,color .13s,transform .13s var(--eo)}
+  .hbtn svg{width:14px;height:14px}
+  .hbtn:hover{background:var(--sunken);color:var(--ink-soft)}
+  .hbtn:active{transform:scale(.9)}
+  .hbtn.pin.on{color:var(--accent);background:var(--accent-soft)}
+
+  /* ---------- corps ---------- */
+  .body{padding:0 12px;flex:1;min-height:0;display:flex;flex-direction:column}
+
+  /* dernière capture (vignette horodatée, cf. réf.) */
+  .cap{display:none;flex-direction:column;gap:6px;margin:2px 0 8px;flex:none}
+  .cap.show{display:flex}
+  .cap .meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-faint)}
+  .cap .meta svg{width:13px;height:13px}
+  .cap .meta b{font-family:var(--font-m);font-weight:600;color:var(--ink-soft)}
+  .cap .meta .n{margin-left:auto;background:var(--sunken);border-radius:20px;padding:0 7px;font-size:10.5px}
+  .cap .thumb{position:relative;height:96px;border-radius:8px;overflow:hidden;border:1px solid var(--line);cursor:pointer;background:var(--sunken)}
+  .cap .thumb img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s var(--eo)}
+  @media (hover:hover) and (pointer:fine){ .cap .thumb:hover img{transform:scale(1.03)} }
+
+  /* prise de notes */
+  .hint{display:flex;align-items:center;gap:8px;padding:9px 11px;margin:2px 0 8px;border-radius:8px;border:1px dashed var(--line-strong);color:var(--ink-faint);font-size:12px;cursor:pointer;flex:none;transition:border-color .15s,color .15s,background .15s}
+  .hint svg{width:14px;height:14px;flex:none}
+  .hint:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .notes{display:none;flex-direction:column;margin:2px 0 8px;flex:1;min-height:0}
+  .card.notes-open .notes{display:flex;animation:fadein .2s var(--eo) both}
+  .card.notes-open .hint{display:none}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+  .nhead{display:flex;align-items:center;gap:8px;font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-faint);padding:0 2px 6px;flex:none}
+  .chip{display:inline-flex;align-items:center;gap:4px;text-transform:none;letter-spacing:0;font-family:var(--font-m);font-size:10px;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 6px}
+  .chip svg{width:11px;height:11px}
+  .nhead .nc{margin-left:auto;font-size:10px;color:var(--ink-faint);background:var(--sunken);border-radius:20px;padding:0 7px}
+  .nlist{height:150px;flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:1px;padding:1px}
+  .nlist::-webkit-scrollbar{width:6px}
+  .nlist::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px}
+  .nitem{display:grid;grid-template-columns:50px 1fr;gap:8px;padding:5px 6px;border-radius:7px;animation:fadein .22s var(--eo) both}
+  .nitem:hover{background:var(--sunken)}
+  .nitem .nts{font-family:var(--font-m);font-size:10.5px;color:var(--accent);font-weight:600;padding-top:1px}
+  .nitem.flag .nts{color:var(--rec)}
+  .nitem .ntx{font-size:12px;color:var(--ink-soft);word-break:break-word}
+  .nempty{padding:12px 8px;text-align:center;font-size:11px;color:var(--ink-faint);line-height:1.5}
+  .nempty b{color:var(--accent)}
+  .ninput{display:flex;align-items:center;gap:4px;margin-top:6px;padding:3px 4px 3px 10px;border-radius:9px;border:1px solid var(--line-strong);background:var(--bg);flex:none;transition:border-color .15s}
+  .ninput:focus-within{border-color:var(--accent)}
+  .ninput input{flex:1;min-width:0;border:0;background:transparent;outline:0;font:inherit;font-size:12px;color:var(--ink);-webkit-user-select:text;user-select:text}
+  .ninput input::placeholder{color:var(--ink-faint)}
+  .mini{width:26px;height:26px;flex:none;border-radius:7px;border:0;background:transparent;color:var(--ink-faint);cursor:pointer;display:grid;place-items:center;transition:background .13s,color .13s,transform .13s var(--eo)}
+  .mini svg{width:14px;height:14px}
+  .mini:hover{background:var(--sunken);color:var(--ink-soft)}
+  .mini:active{transform:scale(.9)}
+  .mini.ts.on{color:var(--accent);background:var(--accent-soft)}
+  .mini.link.on{color:var(--accent);background:var(--accent-soft)}
+  .mini.add{background:var(--navy);color:#fff}
+  .mini.add:hover{filter:brightness(1.12);background:var(--navy);color:#fff}
+
+  /* ---------- pied ---------- */
+  .foot{display:flex;align-items:center;gap:7px;padding:8px 12px 12px;flex:none}
+  .timer{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-m);font-size:13.5px;font-weight:600;font-variant-numeric:tabular-nums;margin-right:auto;color:var(--ink)}
+  .timer svg{width:14px;height:14px;color:var(--ink-faint)}
+  .fbtn{width:36px;height:36px;border-radius:9px;border:1px solid var(--line-strong);background:var(--bg);cursor:pointer;display:grid;place-items:center;color:var(--ink-soft);transition:transform .14s var(--eo),background .15s,color .15s,border-color .15s}
+  .fbtn svg{width:16px;height:16px}
+  .fbtn:hover{background:var(--sunken);color:var(--ink)}
+  .fbtn:active{transform:scale(.93)}
+  .fbtn.note.on{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+  .fbtn.flag:hover{border-color:var(--rec);color:var(--rec);background:var(--rec-soft)}
+  .fbtn.cam:hover{border-color:var(--accent);color:var(--accent)}
+  .fbtn.stop{color:var(--rec);border-color:var(--line-strong)}
+  .fbtn.stop:hover{background:var(--rec);border-color:var(--rec);color:#fff}
+  .fbtn .flash{animation:flash .5s var(--eo)}
+  @keyframes flash{0%{transform:scale(1)}35%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+  /* poignée de redimensionnement (fenêtre frameless : pas de bord natif) */
+  .grip{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;color:var(--ink-faint);opacity:.55;display:grid;place-items:center}
+  .grip:hover{opacity:1}
+  .grip svg{width:10px;height:10px}
+
+  /* ---------- mode RAIL (ultra-fin, vertical) ---------- */
+  .rail{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--line-strong);padding:6px 0 8px}
+  body.railed .rail{display:flex}
+  body.railed .card{display:none}
+  .rail .rgrip{width:100%;height:22px;flex:none;display:grid;place-items:center;color:var(--ink-faint);cursor:grab}
+  .rail .rgrip:active{cursor:grabbing}
+  .rail .rgrip svg{width:12px;height:12px}
+  .rail .rdot{width:6px;height:6px;border-radius:50%;background:var(--rec);animation:pulse 1.3s var(--ed) infinite;margin:1px 0 3px}
+  .rail .fbtn{width:34px;height:34px}
+
+  /* santé de la capture : texte long tronqué (complet dans l'infobulle) */
+  .ht #stLbl{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .ht span.warn{color:#c76a00}
+  .nerr{display:none;font-size:11px;color:var(--rec);padding:4px 2px 0}
+  .nerr.on{display:block}
+  /* accessibilité clavier : anneau de focus visible à la navigation clavier */
+  button:focus-visible,[role="button"]:focus-visible{outline:none;box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent)}
+  .ninput input:focus-visible{outline:none}
+</style>
+</head>
+<body>
+<!-- ================= carte ================= -->
+<div class="card" id="card">
+  <div class="head pywebview-drag-region">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12h1M8 8v8M12 4v16M16 8v8M20 12h-1"/></svg></div>
+    <div class="ht"><b id="mtg" data-i18n="w_meeting">Réunion</b><span id="stRow" role="status"><span class="dot"></span><span id="stLbl" data-i18n="w_recording">Enregistrement en cours</span></span></div>
+    <button class="hbtn pin on" id="pinBtn" aria-pressed="true" title="Toujours au premier plan" data-i18n-title="w_pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 4h6l-1 7 3 3H7l3-3z"/><path d="M12 17v3"/></svg></button>
+    <button class="hbtn" id="railBtn" title="Réduire en barre latérale" data-i18n-title="w_rail"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-6 7 6 7"/></svg></button>
+    <button class="hbtn" id="hideBtn" title="Masquer (ré-afficher depuis Echo)" data-i18n-title="w_hide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 12h12"/></svg></button>
+  </div>
+
+  <div class="body">
+    <div class="cap" id="cap">
+      <div class="meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/></svg><b id="capTs">00:00</b><span data-i18n="w_last_capture">Dernière capture</span><span class="n" id="capN">1</span></div>
+      <div class="thumb" id="capThumb" role="button" tabindex="0" title="Ouvrir la capture" data-i18n-title="w_open_capture"><img id="capImg" alt=""/></div>
+    </div>
+
+    <div class="hint" id="hint" role="button" tabindex="0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20h4l10-10-4-4L4 16z"/></svg><span data-i18n="w_hint">Cliquez pour saisir une note, ou Entrée…</span></div>
+
+    <div class="notes" id="notes">
+      <div class="nhead"><span data-i18n="w_notes">Notes</span> <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 3h9l4 4v14H6z"/></svg>notes.md</span><span class="nc" id="nc">0</span></div>
+      <div class="nlist" id="nlist"></div>
+      <div class="ninput">
+        <input id="nfield" type="text" placeholder="Prendre une note…" data-i18n-ph="w_note_ph" autocomplete="off"/>
+        <button class="mini link" id="linkCap" title="Lier la note à la dernière capture" data-i18n-title="w_link_cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 15l6-6M8 13l-2 2a3.5 3.5 0 0 0 5 5l2-2M16 11l2-2a3.5 3.5 0 0 0-5-5l-2 2"/></svg></button>
+        <button class="mini ts on" id="tsToggle" title="Horodater" data-i18n-title="w_timestamp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button>
+        <button class="mini add" id="nadd" title="Ajouter (Entrée)" data-i18n-title="w_add_enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h13M12 6l6 6-6 6"/></svg></button>
+      </div>
+      <div class="nerr" id="nerr" role="alert"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 10v4M9 7v10M12 4v16M15 7v10M19 10v4"/></svg><span id="timer">00:00</span></span>
+    <button class="fbtn note" id="noteBtn" title="Prendre des notes" data-i18n-title="w_take_notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4h11l5 5v11H4z"/><path d="M8 11h8M8 15h5"/></svg></button>
+    <button class="fbtn flag" id="flagBtn" title="Marquer un moment clé" data-i18n-title="w_flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M5 4h11l-2 4 2 4H5"/></svg></button>
+    <button class="fbtn cam" id="camBtn" title="Capture d'écran" data-i18n-title="w_screenshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/></svg></button>
+    <button class="fbtn stop" id="stopBtn" title="Arrêter et traiter" data-i18n-title="w_stop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none"/></svg></button>
+  </div>
+
+  <div class="grip" id="grip" title="Redimensionner" data-i18n-title="w_resize"><svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M9 1 1 9M9 5 5 9M9 9h0"/></svg></div>
+</div>
+
+<!-- ================= rail vertical ================= -->
+<div class="rail" id="rail">
+  <div class="rgrip pywebview-drag-region" title="Déplacer" data-i18n-title="w_move"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M8 9h8M8 15h8"/></svg></div>
+  <span class="rdot" title="Enregistrement en cours" data-i18n-title="w_recording"></span>
+  <button class="fbtn" id="expandBtn" title="Déplier le widget" data-i18n-title="w_expand"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5l6 7-6 7"/></svg></button>
+  <button class="fbtn cam" id="camBtn2" title="Capture d'écran" data-i18n-title="w_screenshot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><circle cx="12" cy="12.5" r="3"/></svg></button>
+  <button class="fbtn flag" id="flagBtn2" title="Marquer un moment clé" data-i18n-title="w_flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M5 4h11l-2 4 2 4H5"/></svg></button>
+  <button class="fbtn stop" id="stopBtn2" title="Arrêter et traiter" data-i18n-title="w_stop"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none"/></svg></button>
+</div>
+
+<script src="common.js"></script>
+<script>
+const $=s=>document.querySelector(s);
+const api=()=> (window.pywebview && window.pywebview.api) || null;
+let notes=[], elapsed=0, notesOpen=false, railed=false, pinned=true;
+let cardW=340, lastCapPath=null;
+
+/* ---- i18n FR/EN (le widget lit la langue au boot via get_meta.app_lang) ---- */
+let LANG='fr';
+const I18N={
+ fr:{
+  w_meeting:"Réunion", w_recording:"Enregistrement en cours", w_pin:"Toujours au premier plan",
+  w_rail:"Réduire en barre latérale", w_hide:"Masquer (ré-afficher depuis Echo)",
+  w_last_capture:"Dernière capture", w_open_capture:"Ouvrir la capture",
+  w_hint:"Cliquez pour saisir une note, ou Entrée…", w_notes:"Notes", w_note_ph:"Prendre une note…",
+  w_link_cap:"Lier la note à la dernière capture", w_timestamp:"Horodater", w_add_enter:"Ajouter (Entrée)",
+  w_take_notes:"Prendre des notes", w_flag:"Marquer un moment clé", w_screenshot:"Capture d'écran",
+  w_stop:"Arrêter et traiter", w_resize:"Redimensionner", w_move:"Déplacer", w_expand:"Déplier le widget",
+  w_no_notes:"Aucune note.<br/>Chaque note est horodatée et enregistrée dans <b>notes.md</b>.",
+  w_key_moment:"Moment clé",
+  w_note_fail:"Note non enregistrée (l'enregistrement est peut-être arrêté). Votre texte est resté dans le champ.",
+ },
+ en:{
+  w_meeting:"Meeting", w_recording:"Recording in progress", w_pin:"Always on top",
+  w_rail:"Minimize to side rail", w_hide:"Hide (show again from Echo)",
+  w_last_capture:"Last capture", w_open_capture:"Open capture",
+  w_hint:"Click to type a note, or press Enter…", w_notes:"Notes", w_note_ph:"Take a note…",
+  w_link_cap:"Link the note to the last capture", w_timestamp:"Timestamp", w_add_enter:"Add (Enter)",
+  w_take_notes:"Take notes", w_flag:"Flag a key moment", w_screenshot:"Screenshot",
+  w_stop:"Stop and process", w_resize:"Resize", w_move:"Move", w_expand:"Expand the widget",
+  w_no_notes:"No notes.<br/>Each note is timestamped and saved in <b>notes.md</b>.",
+  w_key_moment:"Key moment",
+  w_note_fail:"Note not saved (the recording may have stopped). Your text is still in the field.",
+ }
+};
+function t(key){const tbl=I18N[LANG]||I18N.fr;return (key in tbl)?tbl[key]:(key in I18N.fr?I18N.fr[key]:key);}
+function applyStaticI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(e=>e.textContent=t(e.dataset.i18n));
+  document.querySelectorAll('[data-i18n-html]').forEach(e=>e.innerHTML=t(e.dataset.i18nHtml));
+  document.querySelectorAll('[data-i18n-title]').forEach(e=>e.title=t(e.dataset.i18nTitle));
+  document.querySelectorAll('[data-i18n-ph]').forEach(e=>e.setAttribute('placeholder',t(e.dataset.i18nPh)));
+  // boutons à icône seule : le nom accessible reprend l'infobulle
+  document.querySelectorAll('button[data-i18n-title],[role="button"][data-i18n-title]').forEach(e=>e.setAttribute('aria-label',e.title));
+}
+
+/* ---- dimensionnement : hauteurs déterministes par état ---- */
+const H_HEAD=51, H_HINT=47, H_NOTES=216, H_FOOT=56, H_CAP=128, PAD=4;
+function targetH(){
+  return H_HEAD + (($('#cap').classList.contains('show'))?H_CAP:0)
+       + (notesOpen?H_NOTES:H_HINT) + H_FOOT + PAD;
+}
+function fit(){ try{ if(api()) api().widget_resize(railed?52:cardW, railed?216:targetH()); }catch(e){} }
+
+/* ---- notes ---- */
+function fmt(s){const m=Math.floor(s/60),x=s%60;const h=Math.floor(m/60);return h?`${h}:${String(m%60).padStart(2,'0')}:${String(x).padStart(2,'0')}`:`${String(m).padStart(2,'0')}:${String(x).padStart(2,'0')}`;}
+function renderNotes(){
+  $('#nc').textContent=notes.length;
+  const l=$('#nlist');
+  if(!notes.length){l.innerHTML=`<div class="nempty">${t('w_no_notes')}</div>`;return;}
+  l.innerHTML=notes.map(n=>`<div class="nitem${n.flag?' flag':''}"><span class="nts">${n.flag?'⚑ ':''}${esc(n.ts)}</span><span class="ntx">${esc(n.tx)}</span></div>`).join('');
+  l.scrollTop=l.scrollHeight;
+}
+/* notes.md de la session ("- [mm:ss] ⚑ texte") : relu quand le widget est recréé (il est
+   détruit à chaque masquage) pour ne pas repartir d'une liste vide en pleine réunion. */
+function parseNotesMd(md){
+  return (md||'').split('\n').filter(l=>/^\s*-\s/.test(l)).map(l=>{
+    let s=l.replace(/^\s*-\s*/,''),ts='';
+    const m=s.match(/^\[(\d{1,3}:\d{2}(?::\d{2})?)\]\s*/);if(m){ts=m[1];s=s.slice(m[0].length);}
+    const flag=s.startsWith('⚑');if(flag)s=s.replace(/^⚑\s*/,'');
+    return {ts,tx:s,flag};
+  });
+}
+let _notesGen=0;
+async function loadNotes(dir){
+  const gen=++_notesGen;
+  let md='';try{md=await api().read_notes(dir);}catch(e){return;}
+  if(gen!==_notesGen||dir!==lastDir)return;   // autre session, ou note ajoutée entre-temps
+  notes=parseNotesMd(md);renderNotes();
+}
+function toggleNotes(force){
+  notesOpen=(force!==undefined)?force:!notesOpen;
+  $('#card').classList.toggle('notes-open',notesOpen);
+  $('#noteBtn').classList.toggle('on',notesOpen);
+  $('#noteBtn').setAttribute('aria-pressed',String(notesOpen));
+  fit();
+  if(notesOpen)setTimeout(()=>$('#nfield').focus(),60);
+}
+function noteError(on){const e=$('#nerr');e.textContent=on?t('w_note_fail'):'';e.classList.toggle('on',!!on);}
+/* La note n'est affichée qu'une fois écrite dans notes.md : add_note renvoie false hors
+   enregistrement ou sur erreur d'écriture, et la note restait affichée comme enregistrée. */
+async function addNote(text,flag,field){
+  text=(text||'').trim(); if(!text)return;
+  const useTs=$('#tsToggle').classList.contains('on');
+  // Lier a la derniere capture si le lien est actif ET une capture est affichee.
+  const link=$('#linkCap').classList.contains('on')&&$('#cap').classList.contains('show');
+  const cap=link?($('#capTs').textContent||'capture'):null;
+  const ts=useTs?fmt(elapsed):'';
+  let ok=false;
+  try{ ok=await api().add_note(text,!!flag,useTs,cap); }catch(e){}
+  if(!ok){
+    noteError(true);
+    if(field&&!field.value)field.value=text;                 // rien n'est perdu
+    if(!notesOpen)toggleNotes(true);
+    return;
+  }
+  noteError(false);
+  _notesGen++;                                               // une relecture en cours ne doit pas écraser cette note
+  notes.push({ts,tx:(cap?'[capture] ':'')+text,flag:!!flag});
+  renderNotes();
+}
+function submitField(){const f=$('#nfield');const v=f.value;f.value='';addNote(v,false,f);}
+$('#hint').onclick=()=>toggleNotes(true);
+$('#noteBtn').onclick=()=>toggleNotes();
+$('#nadd').onclick=submitField;
+$('#nfield').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submitField();}});
+$('#tsToggle').onclick=function(){this.classList.toggle('on');this.setAttribute('aria-pressed',String(this.classList.contains('on')));$('#nfield').focus();};
+$('#linkCap').onclick=function(){this.classList.toggle('on');this.setAttribute('aria-pressed',String(this.classList.contains('on')));$('#nfield').focus();};
+
+/* ---- actions ---- */
+function flagAction(btn){
+  addNote(t('w_key_moment'),true);
+  const s=btn.querySelector('svg');s.classList.remove('flash');void s.offsetWidth;s.classList.add('flash');
+}
+$('#flagBtn').onclick=()=>flagAction($('#flagBtn'));
+$('#flagBtn2').onclick=()=>flagAction($('#flagBtn2'));
+function snap(){ if(api()){api().capture_now(); setTimeout(refreshCapture,1400);} }
+$('#camBtn').onclick=snap; $('#camBtn2').onclick=snap;
+$('#stopBtn').onclick=()=>{if(api())api().stop();};
+$('#stopBtn2').onclick=()=>{if(api())api().stop();};
+$('#hideBtn').onclick=()=>{if(api())api().widget_hide();};
+function showPin(){const b=$('#pinBtn');b.classList.toggle('on',pinned);b.setAttribute('aria-pressed',String(pinned));}
+$('#pinBtn').onclick=async function(){
+  const want=!pinned;
+  try{const r=await api().widget_pin(want);pinned=(r===undefined||r===null)?want:!!r;}catch(e){}
+  showPin();
+};
+
+/* ---- carte <-> rail ---- */
+function setRail(on){
+  railed=on;
+  document.body.classList.toggle('railed',on);
+  fit();
+}
+$('#railBtn').onclick=()=>setRail(true);
+$('#expandBtn').onclick=()=>setRail(false);
+
+/* ---- clavier : Entrée / Espace sur les éléments role="button" non-<button> ---- */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;
+  const el=e.target;
+  if(!el||el.tagName==='BUTTON'||el.tagName==='INPUT')return;
+  if(el.matches&&el.matches('[role="button"]')){e.preventDefault();el.click();}
+});
+
+/* ---- poignée de redimensionnement (largeur/hauteur manuelles) ---- */
+(function(){
+  // Resize fluide : une mise a jour par frame (rAF) au lieu d'un setTimeout(40ms).
+  const g=$('#grip'); let sx,sw,drag=false,raf=0;
+  g.addEventListener('pointerdown',e=>{drag=true;g.setPointerCapture(e.pointerId);sx=e.screenX;sw=cardW;e.preventDefault();});
+  g.addEventListener('pointermove',e=>{
+    if(!drag)return;
+    cardW=Math.min(560,Math.max(300,sw+(e.screenX-sx)));
+    if(!raf)raf=requestAnimationFrame(()=>{raf=0;fit();});
+  });
+  g.addEventListener('pointerup',e=>{drag=false;g.releasePointerCapture(e.pointerId);fit();});
+})();
+
+/* ---- dernière capture ---- */
+async function refreshCapture(){
+  if(!api()||railed||document.hidden)return;
+  try{
+    const c=await api().get_last_capture();
+    const box=$('#cap');
+    if(c&&c.dataurl){
+      const had=box.classList.contains('show');
+      $('#capImg').src=c.dataurl;
+      $('#capTs').textContent=c.ts||'';
+      $('#capN').textContent=c.count||1;
+      lastCapPath=c.path;
+      box.classList.add('show');
+      if(!had)fit();
+    }else if(box.classList.contains('show')&&!c){
+      box.classList.remove('show');lastCapPath=null;fit();
+    }
+  }catch(e){}
+}
+$('#capThumb').onclick=()=>{if(lastCapPath&&api())api().open_path(lastCapPath);};
+
+/* ---- état live : get_state toutes les secondes, jamais deux appels en vol, suspendu
+   tant que le widget est masqué (reprise immédiate au retour) ---- */
+let lastDir=null,_tickBusy=false,_tickTimer=0;
+async function tick(){
+  if(!api()||_tickBusy)return;
+  _tickBusy=true;
+  try{
+    const st=await api().get_state();
+    elapsed=st.elapsed_s||0;
+    $('#timer').textContent=st.elapsed_str||fmt(elapsed);
+    $('#mtg').textContent=st.meeting_name||t('w_meeting');
+    // Santé de la capture : texte d'alerte traduit par le pont (jamais lié au silence du micro).
+    const warn=st.health?(st.health_msg||st.health):'';
+    const lbl=$('#stLbl'),txt=warn||t('w_recording');
+    if(lbl.textContent!==txt){lbl.textContent=txt;lbl.title=warn;$('#stRow').classList.toggle('warn',!!warn);}
+    if(st.session_dir!==lastDir){
+      lastDir=st.session_dir;notes=[];renderNotes();toggleNotes(false);noteError(false);
+      $('#cap').classList.remove('show');lastCapPath=null;fit();
+      if(lastDir)loadNotes(lastDir);
+    }
+  }catch(e){}
+  finally{_tickBusy=false;}
+}
+function startTicking(){
+  clearInterval(_tickTimer);_tickTimer=0;
+  if(document.hidden)return;
+  tick();_tickTimer=setInterval(tick,1000);
+}
+renderNotes();
+if(/rail=1/.test(location.search))setRail(true);      /* harnais de dev uniquement */
+if(/notes=1/.test(location.search))setTimeout(()=>toggleNotes(true),2500);  /* harnais de dev uniquement */
+let started=false;
+async function boot(){
+  if(started)return; started=true;
+  try{const m=await api().get_meta();const th=m&&m.settings&&m.settings.ui_theme;if(th)document.documentElement.setAttribute('data-theme',th);
+    LANG=(m&&m.settings&&m.settings.app_lang==='en')?'en':'fr';document.documentElement.setAttribute('lang',LANG);}catch(e){}
+  applyStaticI18n();
+  // état d'épinglage réel de la fenêtre (la page est recréée à chaque affichage)
+  try{const p=await api().widget_pinned();if(typeof p==='boolean')pinned=p;}catch(e){}
+  showPin();
+  startTicking();
+  document.addEventListener('visibilitychange',()=>{startTicking();if(!document.hidden)refreshCapture();});
+  refreshCapture(); setInterval(refreshCapture,4000);
+  fit();
+}
+window.addEventListener('pywebviewready',boot);
+setTimeout(()=>{if(!started&&api())boot();},1200);
+</script>
+</body>
+</html>

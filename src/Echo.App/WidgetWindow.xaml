@@ -1,0 +1,16 @@
+<Window x:Class="Echo.App.WidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Echo"
+        Width="360" Height="300"
+        MinWidth="52" MinHeight="120"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        AllowsTransparency="False"
+        Background="#FFFFFF"
+        ShowInTaskbar="False"
+        Topmost="True"
+        WindowStartupLocation="Manual">
+    <!-- WebView2 created lazily on first Show and disposed on Hide (WebViewController). -->
+    <Grid x:Name="Host" />
+</Window>
