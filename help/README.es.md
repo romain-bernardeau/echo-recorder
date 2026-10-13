@@ -434,14 +434,16 @@ qué aceptas en [openrouter.ai/settings/privacy](https://openrouter.ai/settings/
 
 | Archivo | Contenido |
 |---|---|
-| **... - Audio.mp3** | La grabación de audio |
-| **... - Transcript.txt** | La transcripción bruta con horas |
-| **... - Processed Transcript.txt** | La transcripción por orador |
-| **... - Minutes.eml / .md / .docx** | El acta, lista para enviar desde Outlook |
+| **&lt;Título&gt; - Minutes.eml / .md / .docx** | El acta, lista para enviar desde Outlook ("Compte rendu" con la aplicación en francés) |
+| **&lt;Título&gt; - Transcript.txt** | La transcripción por orador, corregida |
+| **&lt;Título&gt; - Summary.md** | El resumen corto ("Résumé" en francés) |
+| **&lt;Título&gt; - Audio.mp3** | La grabación de audio |
 | **notes.md** | Tus notas y momentos clave con hora |
 | **Captures/** | Las capturas de pantalla |
-| **mic.mp3 / system.mp3** | Las pistas brutas archivadas, para volver a transcribir |
-| **Infos réunion.txt** | Un resumen legible (fecha, duración, participantes) |
+| **.echo/** (oculta) | Los archivos de trabajo de Echo: pistas brutas archivadas (mic.mp3 / system.mp3, para volver a transcribir), transcripción bruta, datos de la reunión, registros |
+
+&lt;Título&gt; es el nombre de la reunión: renombrar la reunión renombra estos archivos. Las reuniones
+anteriores se ordenan así en el primer arranque de Echo.
 
 <a id="settings"></a>
 

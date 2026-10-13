@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Echo.Core.Abstractions;
 using Echo.Core.Models;
+using Echo.Core.Storage;
 using Echo.Teams.Internal;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
@@ -213,9 +214,9 @@ public sealed class TeamsMonitor : ITeamsMonitor, IDisposable
         Directory.CreateDirectory(sessionDir);
         // Walker for this thread's automation, reused for every tick (raw view = Python parity).
         var walker = WalkerFor(automation);
-        string speakersPath = Path.Combine(sessionDir, "speakers.jsonl");
-        string rosterPath = Path.Combine(sessionDir, "roster.jsonl");
-        string titlePath = Path.Combine(sessionDir, "meeting_title.txt");
+        string speakersPath = SessionLayout.ForWrite(sessionDir, SessionLayout.Speakers);
+        string rosterPath = SessionLayout.ForWrite(sessionDir, SessionLayout.Roster);
+        string titlePath = SessionLayout.ForWrite(sessionDir, SessionLayout.MeetingTitle);
 
         // interval 0.5s ⇒ roster snapshot every 20 ticks (~10 s), matching the Python cadence.
         const double interval = 0.5;

@@ -104,7 +104,7 @@ public class AiTranscriberPipelineTests
         };
 
     private static string Processed(string sd) =>
-        File.ReadAllText(Directory.GetFiles(sd, "* - Processed Transcript.txt").Single());
+        File.ReadAllText(Directory.GetFiles(sd, "* - Transcript.txt").Single());
 
     // ── two tracks, several pieces each ────────────────────────────────────────
 

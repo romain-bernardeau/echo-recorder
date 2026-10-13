@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Echo.Core.Storage;
 
 namespace Echo.Ai;
 
@@ -52,10 +53,10 @@ public static class AudioImport
     }
 
     /// <summary>Write the track sidecar (<c>system.json</c>), <c>meeting.json</c> and
-    /// <c>session.json</c> of an imported session whose <c>system.wav</c> is already decoded.</summary>
+    /// <c>session.json</c> of an imported session (in .echo\, where its <c>system.wav</c> goes).</summary>
     public static void WriteMetadata(string sessionDir, string sourceFile, string meetingName, DateTime startLocal, double dur)
     {
-        var wav = Path.Combine(sessionDir, "system.wav");
+        var wav = SessionLayout.ForWrite(sessionDir, "system.wav");
         var t0 = new DateTimeOffset(startLocal).ToUnixTimeMilliseconds() / 1000.0;
         var opts = new JsonSerializerOptions { WriteIndented = true };
         var track = new JsonObject
@@ -66,7 +67,7 @@ public static class AudioImport
             ["source"] = "import",
             ["imported_from"] = Path.GetFileName(sourceFile),
         };
-        File.WriteAllText(Path.Combine(sessionDir, "system.json"), track.ToJsonString(opts));
+        File.WriteAllText(SessionLayout.ForWrite(sessionDir, "system.json"), track.ToJsonString(opts));
 
         var meeting = new JsonObject
         {
@@ -78,7 +79,7 @@ public static class AudioImport
             ["source"] = "audio_import",
             ["imported_from"] = Path.GetFileName(sourceFile),
         };
-        File.WriteAllText(Path.Combine(sessionDir, "meeting.json"), meeting.ToJsonString(opts));
+        File.WriteAllText(SessionLayout.ForWrite(sessionDir, SessionLayout.Meeting), meeting.ToJsonString(opts));
 
         var session = new JsonObject
         {
@@ -88,6 +89,6 @@ public static class AudioImport
             ["duration_s"] = dur,
             ["tracks"] = new JsonObject { ["remote"] = new JsonObject { ["wav"] = wav, ["duration_s"] = dur, ["error"] = null } },
         };
-        File.WriteAllText(Path.Combine(sessionDir, "session.json"), session.ToJsonString(opts));
+        File.WriteAllText(SessionLayout.ForWrite(sessionDir, SessionLayout.Session), session.ToJsonString(opts));
     }
 }

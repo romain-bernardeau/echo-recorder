@@ -260,7 +260,7 @@ public class ModelCatalogTests
             var result = await gen.GenerateAsync(Minutes(dir, settings), null, CancellationToken.None);
 
             Assert.Equal("mistral-small-latest", ModelOf(h.Requests.Single().Content));
-            Assert.Contains(result.OutputFiles, f => f.EndsWith(" - Minutes.md"));
+            Assert.Contains(result.OutputFiles, f => f.EndsWith(" - Compte rendu.md"));
         }
         finally { Directory.Delete(dir, recursive: true); }
     }

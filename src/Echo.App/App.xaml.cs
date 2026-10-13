@@ -76,6 +76,10 @@ public partial class App : Application, IAppShell
         try
         {
             _services = new AppServices();
+            // Tidy every meeting folder into its layout (visible products + hidden .echo\)
+            // BEFORE anything reads them: queue, orphan recovery, retention, the list.
+            try { Echo.Core.Storage.SessionLayoutMigration.Run(_services.Paths.RecordingsDir, _services.Settings.Current.AppLang, Log.Info); }
+            catch (Exception ex) { Log.Error("layout migration", ex); }
             Log.Info("services built; creating WebView2 environment.");
 
             var opts = new CoreWebView2EnvironmentOptions();

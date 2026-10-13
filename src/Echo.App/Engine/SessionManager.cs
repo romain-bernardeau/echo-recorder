@@ -190,7 +190,7 @@ public sealed class SessionManager
                 // Reads auto_screenshot live and only captures while Teams is foreground.
                 var ct = _sessionCts!.Token;
                 _captureLoop = Task.Run(() => ScreenCapture.RunAutoCaptureAsync(
-                    getFolder: () => SessionDir is null ? null : Path.Combine(SessionDir, "Captures"),
+                    getFolder: () => SessionDir is null ? null : SessionLayout.CapturesDir(SessionDir),
                     isEnabled: () => _settings.Current.AutoScreenshot && !Physical,
                     teamsPids: () => _teams.GetTeamsPids(),
                     ct: ct,
@@ -365,7 +365,7 @@ public sealed class SessionManager
             var name = Path.GetFileName(dir);
             bool hasTr = HasTranscript(dir);
             bool needCr = s.AutoMinutes && !SessionFiles.HasCr(dir);
-            bool needSum = !File.Exists(Path.Combine(dir, "resume.md"));
+            bool needSum = SessionLayout.FindSummary(dir) is null;
             if (!hasTr && !SessionFiles.HasAudio(dir))
             {
                 WriteStatus(dir, "error");
@@ -606,6 +606,8 @@ public sealed class SessionManager
             // The transcript exists at this point: the session is usable — never leave
             // the red "error" badge for a CR/summary failure alone.
             ClearStatus(dir);
+            // A rename during the run left files under the old title: align them (no overwrite).
+            try { SessionLayout.RenameVisible(dir, Log.Info); } catch { }
             try { SessionInfo.Ensure(dir, _i18n); } catch { }
             // Pipeline outcome trace — makes a silent skip diagnosable (the CR stopped being
             // produced from 2026-07-15 while the notification still said "compte-rendu prêts"):
@@ -826,15 +828,14 @@ public sealed class SessionManager
     private static string UserMessage(Exception ex)
         => ex is Echo.Ai.LlmApiException m ? m.UserMessage : ex.Message;
 
-    /// <summary>True iff the session already holds a transcript (Python <c>_has_transcript</c>:
-    /// any file whose name ends in "Transcript.txt", incl. the "Processed Transcript.txt").</summary>
+    /// <summary>True iff the session already holds a transcript (any layout, see SessionLayout).</summary>
     private static bool HasTranscript(string dir) => SessionFiles.HasTranscript(dir);
 
     private static string DisplayName(string dir)
     {
         try
         {
-            var mj = Path.Combine(dir, "meeting.json");
+            var mj = SessionLayout.Find(dir, SessionLayout.Meeting);
             if (File.Exists(mj))
             {
                 var n = JsonNode.Parse(File.ReadAllText(mj))?["name"]?.GetValue<string>();
@@ -929,7 +930,7 @@ public sealed class SessionManager
             ["physical"] = physical,
             ["started"] = DateTimeOffset.Now.ToUnixTimeSeconds(),
         };
-        File.WriteAllText(Path.Combine(dir, "meeting.json"), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(SessionLayout.ForWrite(dir, SessionLayout.Meeting), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     /// <summary>
@@ -940,12 +941,12 @@ public sealed class SessionManager
     /// </summary>
     private void PromoteDetectedTitle(string dir)
     {
-        var titlePath = Path.Combine(dir, "meeting_title.txt");
+        var titlePath = SessionLayout.Find(dir, SessionLayout.MeetingTitle);
         if (!File.Exists(titlePath)) return;
         var detected = File.ReadAllText(titlePath).Trim();
         if (detected.Length == 0) return;
 
-        var mjp = Path.Combine(dir, "meeting.json");
+        var mjp = SessionLayout.Find(dir, SessionLayout.Meeting);
         JsonObject node;
         try { node = File.Exists(mjp) ? (JsonNode.Parse(File.ReadAllText(mjp))?.AsObject() ?? new()) : new(); }
         catch { node = new JsonObject(); }
@@ -954,7 +955,7 @@ public sealed class SessionManager
         if (current.Length > 0) return;      // real subject / user rename already present
 
         node["name"] = detected;
-        File.WriteAllText(mjp, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(SessionLayout.ForWrite(dir, SessionLayout.Meeting), node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         MeetingName = detected;
         Log.Info($"[pipeline] meeting title promoted from watch: {detected}");
     }
@@ -975,7 +976,7 @@ public sealed class SessionManager
             ["duration_s"] = Fin(_clock.ElapsedSeconds(System.Diagnostics.Stopwatch.GetTimestamp())),
             ["tracks"] = tracksObj,
         };
-        File.WriteAllText(Path.Combine(dir, "session.json"), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(SessionLayout.ForWrite(dir, SessionLayout.Session), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
     // .echo_status sentinel: "state\n<pid>\n<epoch>" — drives the "processing" badge.
@@ -989,7 +990,7 @@ public sealed class SessionManager
     {
         try
         {
-            var p = Path.Combine(dir, SessionStatus.FileName);
+            var p = SessionLayout.Find(dir, SessionStatus.FileName);
             return File.Exists(p) ? File.ReadAllText(p) : null;
         }
         catch { return null; }
@@ -998,7 +999,7 @@ public sealed class SessionManager
     private static void RestoreStatus(string dir, string? raw)
     {
         if (raw is null) { ClearStatus(dir); return; }
-        try { File.WriteAllText(Path.Combine(dir, SessionStatus.FileName), raw); } catch { }
+        try { File.WriteAllText(SessionLayout.ForWrite(dir, SessionStatus.FileName), raw); } catch { }
     }
 
     /// <summary>i18n lookup with a French fallback, for keys the string table may not carry

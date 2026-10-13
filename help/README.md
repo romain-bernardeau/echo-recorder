@@ -492,14 +492,16 @@ Each meeting has its own folder in `%LOCALAPPDATA%\Echo\recordings` ("Open local
 
 | File | Content |
 |---|---|
-| **... - Audio.mp3** | The audio recording |
-| **... - Transcript.txt** | The raw time-stamped transcription |
-| **... - Processed Transcript.txt** | The transcription by speaker |
-| **... - Minutes.eml / .md / .docx** | The minutes, ready to send from Outlook |
+| **&lt;Title&gt; - Minutes.eml / .md / .docx** | The minutes, ready to send from Outlook ("Compte rendu" when the app is in French) |
+| **&lt;Title&gt; - Transcript.txt** | The transcription by speaker, corrected |
+| **&lt;Title&gt; - Summary.md** | The short summary ("Résumé" in French) |
+| **&lt;Title&gt; - Audio.mp3** | The audio recording |
 | **notes.md** | Your time-stamped notes and key moments |
 | **Captures/** | The screenshots |
-| **mic.mp3 / system.mp3** | The archived raw tracks (your microphone, the participants), used to transcribe again |
-| **Infos réunion.txt** | A readable recap (date, duration, attendees) |
+| **.echo/** (hidden) | Echo's working files: archived raw tracks (mic.mp3 / system.mp3, used to transcribe again), raw transcript, meeting info, logs |
+
+&lt;Title&gt; is the meeting name: renaming the meeting renames these files. Older meetings are tidied
+into this layout the first time Echo starts.
 
 After transcription, the raw audio (WAV, about 1 GB per hour) is archived to one MP3 per track,
 about 20 times smaller. Transcribing again still works. "Keep original WAVs" turns this off, and

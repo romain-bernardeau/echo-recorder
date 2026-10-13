@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using Echo.Core.Storage;
 
 namespace Echo.App.Engine;
 
@@ -12,7 +13,7 @@ namespace Echo.App.Engine;
 /// </summary>
 public static class SessionInfo
 {
-    public const string InfoFile = "Infos réunion.txt";
+    public const string InfoFile = SessionLayout.Info;
 
     // Month names, generic-name list, attendees and duration are SessionQuery's (one copy).
     private static string[] FrMonths => SessionQuery.FrMonths;
@@ -24,8 +25,8 @@ public static class SessionInfo
     /// <paramref name="force"/> (used when a recording stops).</summary>
     public static string Write(string path, I18n i18n, bool force = false)
     {
-        var dest = Path.Combine(path, InfoFile);
-        if (!force && File.Exists(dest)) return dest;
+        if (!force && SessionLayout.Exists(path, InfoFile)) return SessionLayout.Find(path, InfoFile);
+        var dest = SessionLayout.ForWrite(path, InfoFile);
 
         var folder = Path.GetFileName(path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         var parts = folder.Split(" - ", 3);
@@ -35,7 +36,7 @@ public static class SessionInfo
 
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(path, "meeting.json")));
+            using var doc = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(path, SessionLayout.Meeting)));
             var mj = doc.RootElement;
             if (mj.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(n.GetString()))
                 name = n.GetString()!;

@@ -609,7 +609,7 @@ public sealed class Postprocess
                 WriteIndented = true,
                 Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
             };
-            File.WriteAllText(Path.Combine(sessionDir, "postprocess_log.json"),
+            File.WriteAllText(Echo.Core.Storage.SessionLayout.ForWrite(sessionDir, Echo.Core.Storage.SessionLayout.PostprocessLog),
                 JsonSerializer.Serialize(payload, opts), new UTF8Encoding(false));
         }
         catch { /* journal is best-effort; never break the pipeline */ }

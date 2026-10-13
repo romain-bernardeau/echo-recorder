@@ -114,10 +114,10 @@ public static class OrphanRecovery
             try
             {
                 if (skipDir is not null && string.Equals(Path.GetFullPath(dir), Path.GetFullPath(skipDir), StringComparison.OrdinalIgnoreCase)) continue;
-                if (File.Exists(Path.Combine(dir, "session.json"))) continue;
-                var wavs = new[] { "mic", "system" }.Where(t => File.Exists(Path.Combine(dir, t + ".wav"))).ToList();
+                if (SessionLayout.Exists(dir, SessionLayout.Session)) continue;
+                var wavs = SessionLayout.Tags.Where(t => SessionLayout.Exists(dir, t + ".wav")).ToList();
                 if (wavs.Count == 0) continue;
-                if (wavs.Any(t => IsLocked(Path.Combine(dir, t + ".wav")))) continue;   // live capture elsewhere
+                if (wavs.Any(t => IsLocked(SessionLayout.Find(dir, t + ".wav")))) continue;   // live capture elsewhere
                 if (RecoverSession(dir, wavs, log)) done.Add(dir);
             }
             catch (Exception ex) { log($"[recovery] {Path.GetFileName(dir)}: {ex.Message}"); }
@@ -133,7 +133,7 @@ public static class OrphanRecovery
         int usable = 0;
         foreach (var tag in tags)
         {
-            var wav = Path.Combine(dir, tag + ".wav");
+            var wav = SessionLayout.Find(dir, tag + ".wav");
             bool repaired = RepairHeader(wav);
             var h = ReadHeader(wav);
             double dur = h?.ActualDurationSeconds ?? 0.0;
@@ -142,7 +142,7 @@ public static class OrphanRecovery
             maxDur = Math.Max(maxDur, dur);
 
             // Sidecar: make the track visible to the transcriber (got_audio + t0 anchor).
-            var jp = Path.Combine(dir, tag + ".json");
+            var jp = SessionLayout.Find(dir, tag + ".json");
             JsonObject sc;
             try { sc = File.Exists(jp) ? (JsonNode.Parse(File.ReadAllText(jp))?.AsObject() ?? new()) : new(); }
             catch { sc = new JsonObject(); }
@@ -163,7 +163,7 @@ public static class OrphanRecovery
             }
             sc["finalized"] = true;
             sc["recovered"] = true;
-            WriteAtomic(jp, sc.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            WriteAtomic(SessionLayout.ForWrite(dir, tag + ".json"), sc.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
             tracks[tag] = new JsonObject
             {
@@ -176,7 +176,7 @@ public static class OrphanRecovery
         bool physical = false;
         try
         {
-            var mj = JsonNode.Parse(File.ReadAllText(Path.Combine(dir, "meeting.json")))?.AsObject();
+            var mj = JsonNode.Parse(File.ReadAllText(SessionLayout.Find(dir, SessionLayout.Meeting)))?.AsObject();
             physical = mj?["physical"]?.GetValue<bool>() ?? false;
         }
         catch { }
@@ -190,9 +190,9 @@ public static class OrphanRecovery
             ["tracks"] = tracks,
             ["recovered"] = true,
         };
-        WriteAtomic(Path.Combine(dir, "session.json"), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+        WriteAtomic(SessionLayout.ForWrite(dir, SessionLayout.Session), o.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
         // A stale "running"/"error" sentinel from the dead pipeline must not stick.
-        try { var st = Path.Combine(dir, ".echo_status"); if (File.Exists(st)) File.Delete(st); } catch { }
+        SessionLayout.Delete(dir, SessionStatus.FileName);
         return true;
     }
 

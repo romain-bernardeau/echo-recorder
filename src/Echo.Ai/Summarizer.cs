@@ -2,6 +2,7 @@ using System.Text;
 using Echo.Core;
 using Echo.Core.Abstractions;
 using Echo.Core.Models;
+using Echo.Core.Storage;
 
 namespace Echo.Ai;
 
@@ -114,7 +115,7 @@ public sealed class Summarizer : ISummarizer
                 : await MapReduce(client, apiKey, model, provider, transcript, cap, ct);
         }
 
-        var path = Path.Combine(sessionDir, "resume.md");
+        var path = SessionLayout.SummaryPath(sessionDir, settings.AppLang);
         File.WriteAllText(path, content + "\n", new UTF8Encoding(false));
         return path;
     }
@@ -228,19 +229,5 @@ public sealed class Summarizer : ISummarizer
     }
 
     private static string? ReadTranscript(string sd)
-    {
-        string? processed = null, plain = null;
-        try
-        {
-            foreach (var full in Directory.EnumerateFiles(sd))
-            {
-                var low = Path.GetFileName(full).ToLowerInvariant();
-                if (low.EndsWith("processed transcript.txt")) processed = full;
-                else if (low.EndsWith("transcript.txt")) plain = full;
-            }
-        }
-        catch { /* ignore */ }
-        var file = processed ?? plain;
-        return file is null ? null : File.ReadAllText(file);
-    }
+        => SessionLayout.FindTranscript(sd) is { } file ? File.ReadAllText(file) : null;
 }

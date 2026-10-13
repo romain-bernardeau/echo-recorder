@@ -528,14 +528,16 @@ local »).
 
 | Fichier | Contenu |
 |---|---|
-| **... - Audio.mp3** | L'enregistrement audio |
-| **... - Transcript.txt** | La transcription brute horodatée |
-| **... - Processed Transcript.txt** | La transcription par locuteur |
-| **... - Minutes.eml / .md / .docx** | Le compte rendu, prêt à envoyer depuis Outlook |
+| **&lt;Titre&gt; - Compte rendu.eml / .md / .docx** | Le compte rendu, prêt à envoyer depuis Outlook (« Minutes » si l'application est en anglais) |
+| **&lt;Titre&gt; - Transcript.txt** | La transcription par locuteur, corrigée |
+| **&lt;Titre&gt; - Résumé.md** | Le résumé court (« Summary » en anglais) |
+| **&lt;Titre&gt; - Audio.mp3** | L'enregistrement audio |
 | **notes.md** | Vos notes et moments clés horodatés |
 | **Captures/** | Les captures d'écran |
-| **mic.mp3 / system.mp3** | Les pistes brutes archivées (votre micro, les participants), pour retranscrire |
-| **Infos réunion.txt** | Un récapitulatif lisible (date, durée, participants) |
+| **.echo/** (caché) | Les fichiers de travail d'Echo : pistes brutes archivées (mic.mp3 / system.mp3, pour retranscrire), transcription brute, infos de la réunion, journaux |
+
+&lt;Titre&gt; est le nom de la réunion : renommer la réunion renomme ces fichiers. Les réunions plus
+anciennes sont rangées ainsi au premier démarrage d'Echo.
 
 Après transcription, l'audio brut (WAV, environ 1 Go par heure) est archivé en un MP3 par piste,
 environ 20 fois plus léger. La retranscription reste possible. « Conserver les WAV originaux »

@@ -314,7 +314,7 @@ public class PostprocessTests
             Assert.Equal(1, stats.Deterministic);
             Assert.True(stats.LlmRan);
             Assert.Equal(1, stats.LlmApplied);
-            Assert.True(File.Exists(Path.Combine(sd, "postprocess_log.json")));
+            Assert.True(File.Exists(Echo.Core.Storage.SessionLayout.Find(sd, "postprocess_log.json")));
         }
         finally { Directory.Delete(sd, true); }
     }

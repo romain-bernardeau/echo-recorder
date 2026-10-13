@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
+using Echo.Core.Storage;
 
 namespace Echo.Ai;
 
@@ -37,7 +38,7 @@ public static class AudioArchive
     {
         foreach (var ext in new[] { ".wav", ".mp3" })
         {
-            var p = Path.Combine(sessionDir, tag + ext);
+            var p = SessionLayout.Find(sessionDir, tag + ext);
             try { if (File.Exists(p) && new FileInfo(p).Length > 200) return p; }
             catch { /* racing delete */ }
         }
@@ -54,16 +55,19 @@ public static class AudioArchive
         foreach (var tag in Tags)
         {
             bool hasSource = FindTrackSource(sessionDir, tag) is not null;
-            foreach (var suffix in IntermediateSuffixes)
+            foreach (var td in SessionLayout.TrackDirs(sessionDir))
             {
-                // Without a source the intermediate may be the only remaining audio —
-                // keep it (retention will age it out like any other track audio).
-                if (hasSource) freed += TryDelete(Path.Combine(sessionDir, tag + suffix));
-            }
+                foreach (var suffix in IntermediateSuffixes)
+                {
+                    // Without a source the intermediate may be the only remaining audio —
+                    // keep it (retention will age it out like any other track audio).
+                    if (hasSource) freed += TryDelete(Path.Combine(td, tag + suffix));
+                }
 
-            var wav = Path.Combine(sessionDir, tag + ".wav");
-            try { if (File.Exists(wav) && new FileInfo(wav).Length == 0) freed += TryDelete(wav); }
-            catch { /* ignore */ }
+                var wav = Path.Combine(td, tag + ".wav");
+                try { if (File.Exists(wav) && new FileInfo(wav).Length == 0) freed += TryDelete(wav); }
+                catch { /* ignore */ }
+            }
         }
         if (freed > 0) log?.Invoke($"  [archive] intermédiaires supprimés ({freed / (1024 * 1024)} Mo).");
         return freed;

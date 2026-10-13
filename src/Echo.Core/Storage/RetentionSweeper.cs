@@ -68,13 +68,16 @@ public static class RetentionSweeper
                 int days = transcribed ? retentionDays : failed ? failedRetentionDays : 0;
                 if (days > 0 && SessionDate(dir) is { } d && (nowLocal.Date - d.Date).TotalDays >= days)
                 {
-                    foreach (var tag in Tags)
+                    foreach (var td in SessionLayout.TrackDirs(dir))
                     {
-                        f += Remove(Path.Combine(dir, tag + ".wav"), dryRun, counted);
-                        f += Remove(Path.Combine(dir, tag + ".mp3"), dryRun, counted);
-                        foreach (var s in IntermediateSuffixes) f += Remove(Path.Combine(dir, tag + s), dryRun, counted);
+                        foreach (var tag in Tags)
+                        {
+                            f += Remove(Path.Combine(td, tag + ".wav"), dryRun, counted);
+                            f += Remove(Path.Combine(td, tag + ".mp3"), dryRun, counted);
+                            foreach (var s in IntermediateSuffixes) f += Remove(Path.Combine(td, tag + s), dryRun, counted);
+                        }
+                        foreach (var piece in ChunkPieces(td, tag: null)) f += Remove(piece, dryRun, counted);
                     }
-                    foreach (var piece in ChunkPieces(dir, tag: null)) f += Remove(piece, dryRun, counted);
                 }
 
                 if (f > 0)
@@ -120,7 +123,7 @@ public static class RetentionSweeper
         catch { /* unreadable: fall through to session.json */ }
         try
         {
-            var sj = Path.Combine(dir, "session.json");
+            var sj = SessionLayout.Find(dir, SessionLayout.Session);
             if (!File.Exists(sj)) return false;
             using var doc = JsonDocument.Parse(File.ReadAllText(sj));
             return doc.RootElement.ValueKind == JsonValueKind.Object
@@ -151,15 +154,18 @@ public static class RetentionSweeper
         foreach (var tag in Tags)
         {
             bool hasSource = HasTrackSource(dir, tag);
-            if (hasSource)
+            foreach (var td in SessionLayout.TrackDirs(dir))
             {
-                foreach (var s in IntermediateSuffixes) f += Remove(Path.Combine(dir, tag + s), dryRun, counted);
-                foreach (var piece in ChunkPieces(dir, tag)) f += Remove(piece, dryRun, counted);
-            }
+                if (hasSource)
+                {
+                    foreach (var s in IntermediateSuffixes) f += Remove(Path.Combine(td, tag + s), dryRun, counted);
+                    foreach (var piece in ChunkPieces(td, tag)) f += Remove(piece, dryRun, counted);
+                }
 
-            var wav = Path.Combine(dir, tag + ".wav");
-            try { if (File.Exists(wav) && new FileInfo(wav).Length == 0) f += Remove(wav, dryRun, counted); }
-            catch { /* ignore */ }
+                var wav = Path.Combine(td, tag + ".wav");
+                try { if (File.Exists(wav) && new FileInfo(wav).Length == 0) f += Remove(wav, dryRun, counted); }
+                catch { /* ignore */ }
+            }
         }
         return f;
     }
@@ -170,7 +176,7 @@ public static class RetentionSweeper
         {
             try
             {
-                var p = Path.Combine(dir, tag + ext);
+                var p = SessionLayout.Find(dir, tag + ext);
                 if (File.Exists(p) && new FileInfo(p).Length > 200) return true;
             }
             catch { /* ignore */ }
@@ -191,7 +197,7 @@ public static class RetentionSweeper
 
         try
         {
-            var mj = Path.Combine(dir, "meeting.json");
+            var mj = SessionLayout.Find(dir, SessionLayout.Meeting);
             if (File.Exists(mj))
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(mj));

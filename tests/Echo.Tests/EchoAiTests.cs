@@ -140,18 +140,6 @@ public class EchoAiTests
     [Fact]
     public void FmtTs_NullIsQuestionMarks() => Assert.Equal("??:??", Transcriber.FmtTs(null));
 
-    // ── file-prefix sanitisation (short_filebase): illegal chars, 40-char cap, fallback ──
-
-    [Fact]
-    public void ShortFilebase_TruncatesAndSanitises()
-    {
-        Assert.Equal("Transcript", Transcriber.ShortFilebase(""));
-        Assert.Equal("Weekly Sync", Transcriber.ShortFilebase("Weekly:/ Sync"));  // illegal chars removed
-        var longName = new string('a', 60);
-        Assert.Equal(40, Transcriber.ShortFilebase(longName).Length);
-        Assert.Equal("abcd", Transcriber.ShortFilebase("abcd , efgh", max: 6)); // cut to "abcd ," then trailing " ,;-" stripped
-    }
-
     // ── context_bias normalisation (load_context_bias): '_' join, <3 drop, dedup, cap 100 ──
 
     [Fact]

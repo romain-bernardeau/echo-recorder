@@ -115,7 +115,7 @@ public sealed class EngineSessionManagerTests : IDisposable
 
         Assert.Null(_sm.Queue.Get(dir));
         Assert.Null(State(dir));
-        Assert.True(File.Exists(Path.Combine(dir, "CR - Minutes.md")));
+        Assert.True(SessionLayout.HasCr(dir));
     }
 
     // ── re-transcription / no audio ──────────────────────────────────────────────

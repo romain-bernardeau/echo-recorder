@@ -4,6 +4,7 @@ using System.Text.Json;
 using Echo.Core;
 using Echo.Core.Abstractions;
 using Echo.Core.Models;
+using Echo.Core.Storage;
 
 namespace Echo.Ai;
 
@@ -144,12 +145,11 @@ public sealed class Transcriber : ITranscriber
         // the shared instance when the session is not linked to a mission with its own vocab.
         var vocab = _vocab.ForSession(sd);
 
-        var meeting = LoadJson(Path.Combine(sd, "meeting.json"));
+        var meeting = LoadJson(SessionLayout.Find(sd, SessionLayout.Meeting));
         var sessionBase = new DirectoryInfo(sd.TrimEnd('\\', '/')).Name;
         var meetingName = GetString(meeting, "name") ?? sessionBase;
         var dateStr = GetString(meeting, "date_str") ?? "";
         bool physical = GetBool(meeting, "physical");
-        var obase = ShortFilebase(meetingName);
 
         var roster = GetStringList(meeting, "roster");
         var attendees = roster.Concat(SpeakersSeen(sd)).Distinct().OrderBy(x => x, StringComparer.Ordinal).ToList();
@@ -181,7 +181,7 @@ public sealed class Transcriber : ITranscriber
             // The retention policy deletes the per-track audio but may keep the shareable
             // mixdown: re-transcribe from it as ONE remote track (no "Vous" split, speakers come
             // from the Teams timeline or the engine's diarisation).
-            var mix = FindMixdown(sd, obase);
+            var mix = SessionLayout.FindAudio(sd);
             if (mix is null)
             {
                 if (AudioWasRecorded(sd)) throw new AudioPurgedException();
@@ -208,7 +208,7 @@ public sealed class Transcriber : ITranscriber
         // logged skip, never a crash. Deliberate v2 divergence: NOT regenerated when it
         // already exists — the tracks never change after the meeting, and on a
         // re-transcription from archived MP3s a re-mix would only add generation loss.
-        var shareMp3 = Path.Combine(sd, $"{obase} - Audio.mp3");
+        var shareMp3 = SessionLayout.AudioPath(sd);
         if (!fromMixdown && !File.Exists(shareMp3))
             AudioPrep.MakeShareMp3(tracks.Select(t => t.Wav).ToList(), shareMp3, log, ct);
 
@@ -273,7 +273,7 @@ public sealed class Transcriber : ITranscriber
         log?.Report($"  Attribution: {named}/{attributed.Count} segments named ({intervals.Count} intervals).");
 
         // Raw outputs are written BEFORE any correction (faithful reflection of Voxtral).
-        var rawPath = WriteRaw(sd, obase, merged, raw, infos);
+        var rawPath = WriteRaw(sd, merged, raw, infos);
 
         // Post-transcription correction (only affects the Processed Transcript):
         // deterministic lexicon pass (always) then optional guarded LLM pass
@@ -282,7 +282,7 @@ public sealed class Transcriber : ITranscriber
         await ApplyPostprocess(sd, request, vocab, attributed, meetingName, attendees, log, ct);
 
         var header = $"{meetingName}\n{dateStr}\nParticipants: {(attendees.Count > 0 ? string.Join(", ", attendees) : "n/a")}";
-        var (processedPath, turns) = WriteProcessed(sd, obase, attributed, header);
+        var (processedPath, turns) = WriteProcessed(sd, attributed, header);
 
         // Disk housekeeping, only on FULL SUCCESS (transcript written): drop the
         // regenerable _16k intermediates, and unless the user opted to keep the raw
@@ -295,8 +295,9 @@ public sealed class Transcriber : ITranscriber
             // CleanupIntermediates keeps the system_16k* files when no system.wav/mp3 exists
             // (they could be the last audio); from the mixdown they are pure regenerable copies.
             if (fromMixdown)
-                foreach (var suffix in new[] { "_16k.wav", "_16k_trim.wav", "_16k.mp3", "_16k_trim.mp3" })
-                    AudioArchive.TryDelete(Path.Combine(sd, "system" + suffix));
+                foreach (var td in SessionLayout.TrackDirs(sd))
+                    foreach (var suffix in new[] { "_16k.wav", "_16k_trim.wav", "_16k.mp3", "_16k_trim.mp3" })
+                        AudioArchive.TryDelete(Path.Combine(td, "system" + suffix));
             if (!request.Settings.KeepOriginalWav)
                 foreach (var tk in tracks.Where(t => t.Wav.EndsWith(".wav", StringComparison.OrdinalIgnoreCase)))
                     AudioArchive.ArchiveTrackToMp3(tk.Wav, Report, ct);
@@ -320,7 +321,7 @@ public sealed class Transcriber : ITranscriber
             // {tag}.wav, or the {tag}.mp3 archive once the WAV has been compressed —
             // ffmpeg (which does all the prep work) decodes MP3 natively.
             var src = AudioArchive.FindTrackSource(sd, tag);
-            var meta = LoadJson(Path.Combine(sd, $"{tag}.json"));
+            var meta = LoadJson(SessionLayout.Find(sd, $"{tag}.json"));
             if (src is not null
                 && GetBool(meta, "got_audio") && GetDouble(meta, "t0_wall_epoch") is { } t0)
             {
@@ -330,39 +331,21 @@ public sealed class Transcriber : ITranscriber
         return outp;
     }
 
-    /// <summary>The session's shareable mixdown ("{base} - Audio.mp3"), preferring the name
-    /// derived from the current meeting name; null when none (or an empty file) exists.</summary>
-    internal static string? FindMixdown(string sd, string obase)
-    {
-        static bool Usable(string p)
-        {
-            try { return File.Exists(p) && new FileInfo(p).Length > 200; } catch { return false; }
-        }
-        var preferred = Path.Combine(sd, $"{obase} - Audio.mp3");
-        if (Usable(preferred)) return preferred;
-        try
-        {
-            return Directory.EnumerateFiles(sd, "* - Audio.mp3").Where(Usable)
-                .OrderByDescending(p => new FileInfo(p).Length).FirstOrDefault();
-        }
-        catch { return null; }
-    }
-
     /// <summary>True when a track sidecar says audio was captured: no source file then means
     /// it was deleted afterwards (retention), not that the meeting was silent.</summary>
     private static bool AudioWasRecorded(string sd)
-        => new[] { "mic.json", "system.json" }.Any(n => GetBool(LoadJson(Path.Combine(sd, n)), "got_audio"));
+        => new[] { "mic.json", "system.json" }.Any(n => GetBool(LoadJson(SessionLayout.Find(sd, n)), "got_audio"));
 
     private double? AudioStartEpoch(string sd)
     {
         var t0s = new List<double>();
         foreach (var n in new[] { "mic.json", "system.json" })
         {
-            var m = LoadJson(Path.Combine(sd, n));
+            var m = LoadJson(SessionLayout.Find(sd, n));
             if (GetBool(m, "got_audio") && GetDouble(m, "t0_wall_epoch") is { } t0) t0s.Add(t0);
         }
         if (t0s.Count > 0) return t0s.Min();
-        var s = LoadJson(Path.Combine(sd, "session.json"));
+        var s = LoadJson(SessionLayout.Find(sd, SessionLayout.Session));
         return GetDouble(s, "session_wall0_epoch");
     }
 
@@ -377,7 +360,7 @@ public sealed class Transcriber : ITranscriber
         foreach (var tk in tracks)
         {
             double offset = startEpoch is { } se ? tk.T0Epoch - se : 0.0;
-            var prep = PrepareTrackFn(tk.Wav, sd, tk.Tag, trim, ct);
+            var prep = PrepareTrackFn(tk.Wav, SessionLayout.EnsureHidden(sd), tk.Tag, trim, ct);
             // Per-track prep info (transcript.json {infos} field), collected for every
             // track including silent ones, mirroring audio_prep.prepare_track's `info`.
             infos[tk.Tag] = new { duration = prep.Duration, trimmed = prep.Trimmed, kept = prep.Kept, removed = prep.Removed };
@@ -480,7 +463,7 @@ public sealed class Transcriber : ITranscriber
     private List<Interval> BuildIntervals(string sd, double? startEpoch,
         double uiaLag = 1.0, double gap = 1.8, double pad = 0.5, double minSeg = 0.7, int minPolls = 2)
     {
-        var path = Path.Combine(sd, "speakers.jsonl");
+        var path = SessionLayout.Find(sd, SessionLayout.Speakers);
         if (!File.Exists(path) || startEpoch is null) return new List<Interval>();
         var byName = new Dictionary<string, List<double>>();
         foreach (var line in File.ReadLines(path))
@@ -716,7 +699,7 @@ public sealed class Transcriber : ITranscriber
             : a * 60 + b;
     }
 
-    private string WriteRaw(string sd, string obase, List<Seg> merged, Dictionary<string, string> raw, Dictionary<string, object> infos)
+    private string WriteRaw(string sd, List<Seg> merged, Dictionary<string, string> raw, Dictionary<string, object> infos)
     {
         // transcript.json {infos, raw, merged}: debug/audit (per-track prep info + raw
         // per-track Voxtral dumps + merged segments), same key order as Python write_raw.
@@ -732,17 +715,18 @@ public sealed class Transcriber : ITranscriber
             merged = merged.Select(s => new { start = s.Start, end = s.End, text = s.Text, vox_speaker = s.VoxSpeaker, origin = s.Origin }),
         };
         var opts = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-        File.WriteAllText(Path.Combine(sd, "transcript.json"), JsonSerializer.Serialize(payload, opts), new UTF8Encoding(false));
+        File.WriteAllText(SessionLayout.ForWrite(sd, SessionLayout.TranscriptJson), JsonSerializer.Serialize(payload, opts), new UTF8Encoding(false));
 
         var text = string.Join(" ", merged.Where(s => !string.IsNullOrEmpty(s.Text)).Select(s => s.Text)).Trim();
-        var rawTxt = Path.Combine(sd, $"{obase} - Transcript.txt");
+        // Raw text out of sight: the visible "<Titre> - Transcript.txt" is the corrected one.
+        var rawTxt = SessionLayout.ForWrite(sd, SessionLayout.RawTranscript);
         File.WriteAllText(rawTxt, text + "\n", new UTF8Encoding(false));
         return rawTxt;
     }
 
-    private (string Path, List<TranscriptTurn> Turns) WriteProcessed(string sd, string obase, List<Seg> attributed, string header)
+    private (string Path, List<TranscriptTurn> Turns) WriteProcessed(string sd, List<Seg> attributed, string header)
     {
-        var path = Path.Combine(sd, $"{obase} - Processed Transcript.txt");
+        var path = SessionLayout.TranscriptPath(sd);
         var lines = new List<string> { header, "" };
         var turns = new List<TranscriptTurn>();
 
@@ -791,7 +775,7 @@ public sealed class Transcriber : ITranscriber
 
     private IReadOnlyList<string> SpeakersSeen(string sd)
     {
-        var path = Path.Combine(sd, "speakers.jsonl");
+        var path = SessionLayout.Find(sd, SessionLayout.Speakers);
         var names = new HashSet<string>();
         if (!File.Exists(path)) return Array.Empty<string>();
         // FileShare.ReadWrite: a still-open writer (live capture of this very session) must
@@ -805,15 +789,6 @@ public sealed class Transcriber : ITranscriber
             foreach (var n in GetStringList(rec, "speakers")) names.Add(n);
         }
         return names.OrderBy(x => x, StringComparer.Ordinal).ToList();
-    }
-
-    /// <summary>Short, filesystem-safe file prefix (Windows ~260-char path limit).</summary>
-    public static string ShortFilebase(string? name, int max = 40)
-    {
-        var s = System.Text.RegularExpressions.Regex.Replace(name ?? "", "[<>:\"/\\\\|?*\r\n\t]", "");
-        s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim();
-        if (s.Length > max) s = s[..max].TrimEnd(' ', ',', ';', '-');
-        return s.Length == 0 ? "Transcript" : s;
     }
 
     // ── JSON reading ──────────────────────────────────────────────────────────

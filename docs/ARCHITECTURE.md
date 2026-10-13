@@ -44,7 +44,13 @@ and `Echo.App` composes them.
 3. **Merge**: segments are attributed to Teams names (system track) or to the user (mic track);
    echo of the speakers picked up by the mic is removed; an optional LLM pass corrects the text.
 4. **Minutes and summary**: one LLM call, or map-reduce when the transcript exceeds the
-   model's context window. Output: `.eml` (ready to send), `.docx`, `.md`, `resume.md`.
+   model's context window. Output: `.eml` (ready to send), `.docx`, `.md`, plus the short summary.
+
+**Meeting folder** (`Echo.Core.Storage.SessionLayout`, the only code that knows it): at the root
+`<Title> - Compte rendu.*` (EN `Minutes`), `<Title> - Transcript.txt` (corrected), `<Title> - Résumé.md`
+(EN `Summary`), `<Title> - Audio.mp3`, `notes.md`, `Captures\`; everything else (json sidecars, status,
+tracks, intermediates, raw transcript, logs) in the hidden `.echo\`. Reads fall back on the legacy
+root; `SessionLayoutMigration` tidies older folders at startup (moves only, never overwrites).
 
 ## Distribution and updates
 

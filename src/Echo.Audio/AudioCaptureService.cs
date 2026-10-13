@@ -30,7 +30,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     private readonly Dictionary<string, int> _restartSeen = new();
     private bool _running;
     private bool _physical;
-    private string _sessionDir = "";
+    private string _trackDir = "";   // the session's hidden .echo\ (SessionLayout)
     private CaptureClock _clock;
 
     // Mic reopen (no mic at start): guarded against a concurrent StopAsync.
@@ -69,7 +69,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
     {
         if (_running) throw new InvalidOperationException("Capture already started.");
         Directory.CreateDirectory(sessionDir);
-        _sessionDir = sessionDir;
+        _trackDir = Echo.Core.Storage.SessionLayout.EnsureHidden(sessionDir);
         _clock = clock;
         _physical = physical;
         _stopping = false;
@@ -95,7 +95,7 @@ public sealed class AudioCaptureService : IAudioCaptureService
         {
             // System track is tolerant: no inner recorder → mic-only for now, the
             // controller retries from the watchdog.
-            var sys = new SystemLoopbackController(clock, sessionDir, _captureMode,
+            var sys = new SystemLoopbackController(clock, _trackDir, _captureMode,
                 _meetingActive, EmitEvent, _loopbackDeviceId);
             sys.Start();
             _sys = sys;
@@ -131,8 +131,8 @@ public sealed class AudioCaptureService : IAudioCaptureService
         }
         catch { /* enumeration best-effort */ }
 
-        string wav = Path.Combine(_sessionDir, "mic.wav");
-        string json = Path.Combine(_sessionDir, "mic.json");
+        string wav = Path.Combine(_trackDir, "mic.wav");
+        string json = Path.Combine(_trackDir, "mic.json");
         foreach (var (id, role) in attempts)
         {
             string? key = id ?? DefaultCaptureId(role);

@@ -23,7 +23,7 @@ public static class SessionStatus
     /// (callers decide: the sweeper then assumes "live" and never deletes).</summary>
     public static Sentinel? Read(string dir)
     {
-        var p = Path.Combine(dir, FileName);
+        var p = SessionLayout.Find(dir, FileName);
         if (!File.Exists(p)) return null;
         return Parse(File.ReadAllText(p));
     }
@@ -43,14 +43,14 @@ public static class SessionStatus
         {
             var pid = Environment.ProcessId;
             var epoch = DateTimeOffset.Now.ToUnixTimeSeconds();
-            File.WriteAllText(Path.Combine(dir, FileName), $"{state}\n{pid}\n{epoch}\n");
+            File.WriteAllText(SessionLayout.ForWrite(dir, FileName), $"{state}\n{pid}\n{epoch}\n");
         }
         catch { /* best effort: the badge only */ }
     }
 
     public static void Clear(string dir)
     {
-        try { var p = Path.Combine(dir, FileName); if (File.Exists(p)) File.Delete(p); } catch { }
+        SessionLayout.Delete(dir, FileName);
     }
 
     /// <summary>

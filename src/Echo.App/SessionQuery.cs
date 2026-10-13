@@ -9,8 +9,8 @@ namespace Echo.App;
 /// <summary>
 /// Read-only scanner over the recordings root, ported from the Python engine
 /// (_scan_sessions / _session_meta / _session_state / session_detail). A directory
-/// is a session iff it contains mic.wav or system.wav; "done" iff a *Minutes.eml /
-/// *Summary.eml exists (or the .echo_status sentinel says running/error).
+/// is a session iff it holds meeting.json or a track; "done" iff a CR .eml exists (or the
+/// .echo_status sentinel says running/error). File locations: <see cref="SessionLayout"/>.
 /// Backs the recents, all-recents, total and session_detail bridge methods.
 /// </summary>
 public sealed class SessionQuery
@@ -47,10 +47,7 @@ public sealed class SessionQuery
                 // A session's tracks may be raw WAVs, MP3 archives (post-transcription
                 // compression), or entirely purged by the retention policy — meeting.json
                 // then still marks the folder as a session (transcripts/CR remain).
-                if (File.Exists(Path.Combine(d, "mic.wav")) || File.Exists(Path.Combine(d, "system.wav"))
-                    || File.Exists(Path.Combine(d, "mic.mp3")) || File.Exists(Path.Combine(d, "system.mp3"))
-                    || File.Exists(Path.Combine(d, "meeting.json")))
-                    subs.Add(d);
+                if (SessionLayout.IsSession(d)) subs.Add(d);
             }
         }
         catch (Exception ex) { Log.Error("scan sessions", ex); }
@@ -94,8 +91,8 @@ public sealed class SessionQuery
         // Overwriting an existing file does not touch the folder's timestamp: the files Meta
         // reads in place (rename, badge, flag, duration) are keyed individually.
         return string.Join("|", dir,
-            T(Path.Combine(path, "meeting.json")), T(Path.Combine(path, SessionStatus.FileName)),
-            T(Path.Combine(path, "flag.txt")), T(Path.Combine(path, "session.json")));
+            T(SessionLayout.Find(path, SessionLayout.Meeting)), T(SessionLayout.Find(path, SessionStatus.FileName)),
+            T(SessionLayout.Find(path, SessionLayout.Flag)), T(SessionLayout.Find(path, SessionLayout.Session)));
     }
 
     public List<object> Recents(int limit)
@@ -115,15 +112,15 @@ public sealed class SessionQuery
 
     // ── global full-text search (home) ─────────────────────────────────────────
 
-    /// <summary>Files a session is searched through, most useful first. The first
-    /// element of each tuple is a filename SUFFIX (via <see cref="FindFiles"/>).</summary>
-    private static readonly (string Suffix, string Kind)[] SearchTargets =
+    /// <summary>Files a session is searched through, most useful first.</summary>
+    private static IEnumerable<(string? File, string Kind)> SearchTargets(string path)
     {
-        ("Processed Transcript.txt", "transcript"),
-        ("Minutes.md", "cr"), ("Summary.md", "cr"),
-        ("notes.md", "notes"),
-        ("resume.md", "resume"),
-    };
+        yield return (SessionLayout.FindTranscript(path), "transcript");
+        foreach (var cr in SessionLayout.CrFiles(path).Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase)))
+            yield return (cr, "cr");
+        yield return (SessionLayout.NotesPath(path), "notes");
+        yield return (SessionLayout.FindSummary(path), "resume");
+    }
 
     /// <summary>
     /// Accent/case-insensitive full-text search over every session: meeting names,
@@ -181,7 +178,7 @@ public sealed class SessionQuery
             if (parts.Length >= 3) dispName = parts[2];
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(path, "meeting.json")));
+                using var doc = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(path, SessionLayout.Meeting)));
                 var mj = doc.RootElement;
                 if (mj.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String
                     && !string.IsNullOrWhiteSpace(n.GetString())) dispName = n.GetString()!;
@@ -189,37 +186,16 @@ public sealed class SessionQuery
             catch { /* folder name stays */ }
             if (Snippet(dispName, "titre") is { } nameHit) matches.Add(nameHit);
 
-            bool transcriptHit = false;
-            foreach (var (suffix, kind) in SearchTargets)
+            foreach (var (file, kind) in SearchTargets(path))
             {
                 if (matches.Count >= 2) break;
-                foreach (var file in FindFiles(path, suffix))
+                if (file is null || !File.Exists(file)) continue;
+                try
                 {
-                    try
-                    {
-                        if (new FileInfo(file).Length > 2_000_000) continue;
-                        if (Snippet(File.ReadAllText(file), kind) is { } hit)
-                        {
-                            matches.Add(hit);
-                            if (kind == "transcript") transcriptHit = true;
-                            break;
-                        }
-                    }
-                    catch { /* unreadable file: skip */ }
+                    if (new FileInfo(file).Length > 2_000_000) continue;
+                    if (Snippet(File.ReadAllText(file), kind) is { } hit) matches.Add(hit);
                 }
-            }
-            // Raw transcript fallback (sessions without a processed transcript).
-            if (matches.Count < 2 && !transcriptHit)
-            {
-                foreach (var file in FindFiles(path, "- Transcript.txt"))
-                {
-                    try
-                    {
-                        if (new FileInfo(file).Length > 2_000_000) continue;
-                        if (Snippet(File.ReadAllText(file), "transcript") is { } hit) { matches.Add(hit); break; }
-                    }
-                    catch { }
-                }
+                catch { /* unreadable file: skip */ }
             }
 
             if (matches.Count > 0)
@@ -259,7 +235,7 @@ public sealed class SessionQuery
 
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(path, "meeting.json")));
+            using var doc = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(path, SessionLayout.Meeting)));
             var mj = doc.RootElement;
             if (mj.TryGetProperty("name", out var n) && n.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(n.GetString()))
                 name = n.GetString()!;
@@ -289,7 +265,7 @@ public sealed class SessionQuery
             // Transcript present but no CR file → the UI shows an actionable "CR manquant"
             // chip (the CR silently-missing episode of 2026-07-15/16 was invisible until
             // the meeting was opened).
-            has_tr = HasFileSuffix(path, "Transcript.txt"),
+            has_tr = SessionLayout.HasTranscript(path),
             has_cr = HasCr(path),
             // A track (wav/mp3) or the listening mixdown is still there: without it,
             // "Relancer la transcription" has nothing to send (audio purged by the retention).
@@ -300,11 +276,11 @@ public sealed class SessionQuery
     /// <summary>Recorded duration in whole seconds (session.json, else a track sidecar); 0 if unknown.</summary>
     internal static int ReadDurationSeconds(string path)
     {
-        foreach (var jf in new[] { "session.json", "system.json", "mic.json" })
+        foreach (var jf in new[] { SessionLayout.Session, "system.json", "mic.json" })
         {
             try
             {
-                using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(path, jf)));
+                using var doc = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(path, jf)));
                 var root = doc.RootElement;
                 if (root.TryGetProperty("duration_s", out var ds))
                 {
@@ -315,16 +291,6 @@ public sealed class SessionQuery
             catch { }
         }
         return 0;
-    }
-
-    private static bool HasFileSuffix(string path, string suffix)
-    {
-        try
-        {
-            return Directory.EnumerateFiles(path)
-                .Any(f => Path.GetFileName(f).EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
-        }
-        catch { return false; }
     }
 
     private static bool HasCr(string path) => SessionFiles.HasCr(path);
@@ -341,16 +307,7 @@ public sealed class SessionQuery
             if (eff is not null) return eff;
         }
         catch { }
-        try
-        {
-            foreach (var n in Directory.EnumerateFiles(path))
-            {
-                var f = Path.GetFileName(n);
-                if (f.EndsWith("Minutes.eml", StringComparison.OrdinalIgnoreCase)
-                    || f.EndsWith("Summary.eml", StringComparison.OrdinalIgnoreCase)) return "done";
-            }
-        }
-        catch { }
+        if (SessionLayout.CrFiles(path).Any(f => f.EndsWith(".eml", StringComparison.OrdinalIgnoreCase))) return "done";
         return "recorded";
     }
 
@@ -358,7 +315,7 @@ public sealed class SessionQuery
     {
         try
         {
-            var fid = File.ReadAllText(Path.Combine(path, "flag.txt")).Trim();
+            var fid = File.ReadAllText(SessionLayout.Find(path, SessionLayout.Flag)).Trim();
             return string.IsNullOrEmpty(fid) ? null : fid;
         }
         catch { return null; }
@@ -366,11 +323,10 @@ public sealed class SessionQuery
 
     public void SetSessionFlag(string path, string? fid)
     {
-        var p = Path.Combine(path, "flag.txt");
         try
         {
-            if (!string.IsNullOrWhiteSpace(fid)) File.WriteAllText(p, fid);
-            else if (File.Exists(p)) File.Delete(p);
+            if (!string.IsNullOrWhiteSpace(fid)) File.WriteAllText(SessionLayout.ForWrite(path, SessionLayout.Flag), fid);
+            else SessionLayout.Delete(path, SessionLayout.Flag);
         }
         catch (Exception ex) { Log.Error("flag write", ex); }
     }
@@ -382,25 +338,26 @@ public sealed class SessionQuery
         if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path)) return new { error = "introuvable" };
 
         var meta = Meta(path);
-        var transcripts = FindFiles(path, "Transcript.txt");
-        var crs = FindFiles(path, "Minutes.eml", "Summary.eml", "Minutes.html", "Summary.html",
-                                  "Minutes.docx", "Summary.docx", "Minutes.md", "Summary.md");
-        var infoTxt = FindFiles(path, "Infos réunion.txt", "Infos reunion.txt");
+        var transcript = SessionLayout.FindTranscript(path);
+        var crs = SessionLayout.CrFiles(path);
+        var infoTxt = new[] { SessionLayout.Info, "Infos reunion.txt" }
+            .Select(n => SessionLayout.Find(path, n)).Where(File.Exists).ToList();
         var attendees = Attendees(path);
 
         return new
         {
             meta,
             attendees,
-            has_transcript = transcripts.Count > 0,
-            transcript = transcripts.Count > 0 ? ReadText(transcripts[0]) : "",
+            has_transcript = transcript is not null,
+            transcript = transcript is not null ? ReadText(transcript) : "",
             cr_files = crs.Select(p => new { name = Path.GetFileName(p), path = p }).ToList(),
             info_files = infoTxt.Select(p => new { name = Path.GetFileName(p), path = p }).ToList(),
             captures = Captures(path),
-            notes = FileText(Path.Combine(path, "notes.md")),
-            summary = FileText(Path.Combine(path, "resume.md")),
+            notes = FileText(SessionLayout.NotesPath(path)),
+            summary = SessionLayout.FindSummary(path) is { } sum ? FileText(sum) : "",
             emails = EmailsFor(path, attendees),
-            audio = FindFiles(path, "mic.wav", "system.wav", "mic.mp3", "system.mp3")
+            audio = SessionLayout.Tags.SelectMany(t => new[] { t + ".wav", t + ".mp3" })
+                .Select(n => SessionLayout.Find(path, n)).Where(File.Exists)
                 .Select(p => new { name = Path.GetFileName(p), path = p }).ToList(),
             // Full-meeting player in the transcript tab: URL of the "… - Audio.mp3" mixdown
             // through the WebView2 virtual host (see WebViewHost mapping). Null when the
@@ -414,9 +371,8 @@ public sealed class SessionQuery
     {
         try
         {
-            var mix = FindFiles(path, "- Audio.mp3");
-            if (mix.Count == 0) return null;
-            var rel = Path.GetRelativePath(_paths.RecordingsDir, mix[0]);
+            if (SessionLayout.FindAudio(path) is not { } mix) return null;
+            var rel = Path.GetRelativePath(_paths.RecordingsDir, mix);
             if (rel.StartsWith("..") || Path.IsPathRooted(rel)) return null;
             var encoded = string.Join('/', rel.Split('\\', '/').Select(Uri.EscapeDataString));
             return "https://echo-recordings/" + encoded;
@@ -440,16 +396,16 @@ public sealed class SessionQuery
 
         try
         {
-            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(path, "meeting.json")));
+            using var doc = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(path, SessionLayout.Meeting)));
             var mj = doc.RootElement;
             if (mj.TryGetProperty("roster", out var r) && r.ValueKind == JsonValueKind.Array)
                 Add(r.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!));
         }
         catch { }
 
-        foreach (var file in new[] { "roster.jsonl", "speakers.jsonl" })
+        foreach (var file in new[] { SessionLayout.Roster, SessionLayout.Speakers })
         {
-            var fp = Path.Combine(path, file);
+            var fp = SessionLayout.Find(path, file);
             if (!File.Exists(fp)) continue;
             try
             {
@@ -460,7 +416,7 @@ public sealed class SessionQuery
                     {
                         using var doc = JsonDocument.Parse(line);
                         var el = doc.RootElement;
-                        var key = file == "roster.jsonl" ? "roster" : "speakers";
+                        var key = file == SessionLayout.Roster ? "roster" : "speakers";
                         if (el.TryGetProperty(key, out var arr) && arr.ValueKind == JsonValueKind.Array)
                             Add(arr.EnumerateArray().Where(x => x.ValueKind == JsonValueKind.String).Select(x => x.GetString()!));
                     }
@@ -488,7 +444,7 @@ public sealed class SessionQuery
     {
         try
         {
-            var p = Path.Combine(path, "emails.json");
+            var p = SessionLayout.Find(path, SessionLayout.Emails);
             if (File.Exists(p))
                 return JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(p)) ?? new();
         }
@@ -503,7 +459,7 @@ public sealed class SessionQuery
         if (string.IsNullOrWhiteSpace(sessionDir)) return new();
         try
         {
-            var p = Path.Combine(sessionDir!, "speakers.jsonl");
+            var p = SessionLayout.Find(sessionDir!, SessionLayout.Speakers);
             if (!File.Exists(p)) return new();
             // Polled every second by get_state while recording: parse only the TAIL of the
             // file (it grows by a line per speaker change, hours long), not every line.
@@ -558,7 +514,7 @@ public sealed class SessionQuery
     private static List<object> Captures(string path, int limit = 24)
     {
         var outList = new List<object>();
-        var dir = Path.Combine(path, "Captures");
+        var dir = SessionLayout.CapturesDir(path);
         if (!Directory.Exists(dir)) return outList;
         try
         {

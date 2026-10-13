@@ -167,7 +167,7 @@ public sealed class Vocabulary : IVocabulary
         string id;
         try
         {
-            var flagFile = Path.Combine(sessionDir!, "flag.txt");
+            var flagFile = Echo.Core.Storage.SessionLayout.Find(sessionDir!, Echo.Core.Storage.SessionLayout.Flag);
             if (!File.Exists(flagFile)) return null;
             id = File.ReadAllText(flagFile).Trim();
         }

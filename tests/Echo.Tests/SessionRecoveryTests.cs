@@ -140,13 +140,13 @@ public sealed class SessionRecoveryTests : IDisposable
         Assert.Equal(1, r.Recovered);
         Assert.Equal(Path.GetFullPath(orphan), Path.GetFullPath(r.Dirs[0]));
 
-        var session = JsonDocument.Parse(File.ReadAllText(Path.Combine(orphan, "session.json"))).RootElement;
+        var session = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(orphan, "session.json"))).RootElement;
         Assert.Equal(4.0, session.GetProperty("duration_s").GetDouble(), 2);
         Assert.True(session.GetProperty("recovered").GetBoolean());
         Assert.Equal(2.0, session.GetProperty("tracks").GetProperty("mic").GetProperty("duration_s").GetDouble(), 2);
         Assert.False(File.Exists(Path.Combine(orphan, ".echo_status")));
 
-        var mic = JsonDocument.Parse(File.ReadAllText(Path.Combine(orphan, "mic.json"))).RootElement;
+        var mic = JsonDocument.Parse(File.ReadAllText(SessionLayout.Find(orphan, "mic.json"))).RootElement;
         Assert.True(mic.GetProperty("got_audio").GetBoolean());
         Assert.Equal(1789545078.263, mic.GetProperty("t0_wall_epoch").GetDouble(), 3);   // wall0 + 0.5
         Assert.True(mic.GetProperty("t0_estimated").GetBoolean());

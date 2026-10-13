@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using Echo.Core;
 using Echo.Core.Abstractions;
 using Echo.Core.Models;
+using Echo.Core.Storage;
 
 namespace Echo.Ai;
 
@@ -133,12 +134,12 @@ public sealed class MinutesGenerator : IMinutesGenerator
         // the shared global + system lexicons (resolved from <sessionDir>\flag.txt). Feeds the
         // CR glossary ONLY, never the neutral transcript-only summary.
         var vocab = _vocab.ForSession(sd);
-        var (transcriptPath, baseName) = FindTranscript(sd);
+        var transcriptPath = SessionLayout.FindTranscript(sd);
         if (transcriptPath is null) throw new FileNotFoundException("No transcript found in the session.");
         var transcript = await File.ReadAllTextAsync(transcriptPath, ct);
 
-        var meeting = Transcriber.LoadJson(Path.Combine(sd, "meeting.json"));
-        var meetingName = Transcriber.GetString(meeting, "name") ?? baseName;
+        var meeting = Transcriber.LoadJson(SessionLayout.Find(sd, SessionLayout.Meeting));
+        var meetingName = Transcriber.GetString(meeting, "name") ?? SessionLayout.Title(sd);
         var dateStr = Transcriber.GetString(meeting, "date_str");
         var attendees = Transcriber.GetStringList(meeting, "roster");
         if (attendees.Count == 0) attendees = AttendeesFromSpeakers(sd);
@@ -156,23 +157,17 @@ public sealed class MinutesGenerator : IMinutesGenerator
         var data = await GenerateMinutesData(client, request.ApiKey, model, provider, vocab, transcript, meetingName, attendees,
             dateStr, outLang, request.Template.Instructions, request.Template.Sample, log, ct);
 
-        // Name CRs EXACTLY like the discovered transcript prefix so a regeneration
-        // OVERWRITES the previous (possibly Python-era) CR instead of writing a
-        // sibling the UI/scan won't pair up. Mirrors minutes.py main(), which derives
-        // the base from _find_transcript, not from re-truncating the meeting name.
-        var bfn = baseName.Length > 0 ? baseName : SafeFilename(Transcriber.ShortFilebase(meetingName));
+        // One name whatever the template: "<Titre> - Compte rendu.*" (EN "Minutes"), in the
+        // app language of the moment, so a regeneration overwrites the previous CR.
+        var crBase = SessionLayout.CrBase(sd, settings.AppLang);
         var outputs = new List<string>();
 
         if (crType is "both" or "detailed")
-        {
-            var detailedBase = Path.Combine(sd, $"{bfn} - Minutes");
-            outputs.AddRange(EmitAll(detailedBase, data, general: false, formats, settings, dateStr, attendees, data.Subject));
-        }
+            outputs.AddRange(EmitAll(crBase, data, general: false, formats, settings, dateStr, attendees, data.Subject));
         if (crType is "both" or "general")
         {
             var summary = CloneWithSubject(data, SummarySubject(data.Subject));
-            var generalBase = Path.Combine(sd, $"{bfn} - Summary");
-            outputs.AddRange(EmitAll(generalBase, summary, general: true, formats, settings, dateStr, attendees, summary.Subject));
+            outputs.AddRange(EmitAll(crBase, summary, general: true, formats, settings, dateStr, attendees, summary.Subject));
         }
 
         log?.Report($"  Minutes: {string.Join(", ", outputs.Select(Path.GetFileName))}");
@@ -771,37 +766,9 @@ public sealed class MinutesGenerator : IMinutesGenerator
         return s.Length > 0 ? s : "auto";
     }
 
-    private static string SafeFilename(string s)
-    {
-        s = Regex.Replace(s ?? "", "[<>:\"/\\\\|?*\\x00-\\x1f]", "").Trim();
-        s = Regex.Replace(s, @"\s+", " ");
-        return s.Length > 120 ? s[..120] : s;
-    }
-
-    private static (string? Path, string BaseName) FindTranscript(string sd)
-    {
-        string? processed = null, plain = null;
-        try
-        {
-            foreach (var full in Directory.EnumerateFiles(sd))
-            {
-                var n = Path.GetFileName(full);
-                var low = n.ToLowerInvariant();
-                if (low.EndsWith("processed transcript.txt")) processed = n;
-                else if (low.EndsWith("transcript.txt")) plain = n;
-            }
-        }
-        catch { /* ignore */ }
-        var fname = processed ?? plain;
-        if (fname is null) return (null, "");
-        foreach (var suf in new[] { " - Processed Transcript.txt", " - Transcript.txt" })
-            if (fname.EndsWith(suf)) return (Path.Combine(sd, fname), fname[..^suf.Length]);
-        return (Path.Combine(sd, fname), Path.GetFileNameWithoutExtension(fname));
-    }
-
     private static List<string> AttendeesFromSpeakers(string sd)
     {
-        var path = Path.Combine(sd, "speakers.jsonl");
+        var path = SessionLayout.Find(sd, SessionLayout.Speakers);
         var names = new HashSet<string>();
         if (!File.Exists(path)) return new List<string>();
         foreach (var line in File.ReadLines(path))

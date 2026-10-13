@@ -8,6 +8,7 @@ using System.Text.Json;
 using Echo.App.Engine;
 using Echo.Core;
 using Echo.Core.Models;
+using Echo.Core.Storage;
 
 namespace Echo.App;
 
@@ -112,7 +113,7 @@ public sealed class Bridge
             case "add_note": return AddNote(Str(a, 0), BoolOr(a, 1, false), BoolOr(a, 2, true), StrN(a, 3));
             case "add_capture_note": return AddCaptureNote(Str(a, 0), Str(a, 1), Str(a, 2));
             case "read_notes":
-                return SessionDir(Str(a, 0)) is { } notesDir ? SessionQuery.FileText(Path.Combine(notesDir, "notes.md")) : "";
+                return SessionDir(Str(a, 0)) is { } notesDir ? SessionQuery.FileText(SessionLayout.NotesPath(notesDir)) : "";
             case "write_notes": return WriteNotes(Str(a, 0), Str(a, 1));
 
             // ── settings & key ─────────────────────────────────────────────
@@ -277,13 +278,14 @@ public sealed class Bridge
     {
         var path = SessionDir(rawPath);
         if (path is null) return null;
-        var mds = _s.Query.FindFiles(path, "Minutes.md", "Summary.md");
+        var crs = SessionLayout.CrFiles(path);
+        var mds = crs.Where(f => f.EndsWith(".md", StringComparison.OrdinalIgnoreCase)).ToList();
         if (mds.Count > 0)
         {
             var p = mds.OrderByDescending(File.GetLastWriteTimeUtc).First();
             return new { kind = "md", text = SessionQuery.ReadText(p), name = Path.GetFileName(p) };
         }
-        var emls = _s.Query.FindFiles(path, "Minutes.eml", "Summary.eml");
+        var emls = crs.Where(f => f.EndsWith(".eml", StringComparison.OrdinalIgnoreCase)).ToList();
         if (emls.Count == 0) return null;
         var e = emls.OrderByDescending(File.GetLastWriteTimeUtc).First();
         try
@@ -299,14 +301,16 @@ public sealed class Bridge
         name = (name ?? "").Trim();
         var path = SessionDir(rawPath);
         if (string.IsNullOrEmpty(name) || path is null) return false;
-        var mjp = Path.Combine(path, "meeting.json");
+        var mjp = SessionLayout.Find(path, SessionLayout.Meeting);
         try
         {
             var node = File.Exists(mjp)
                 ? (System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(mjp))?.AsObject() ?? new())
                 : new System.Text.Json.Nodes.JsonObject();
             node["name"] = name;
-            WriteAtomic(mjp, node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            WriteAtomic(SessionLayout.ForWrite(path, SessionLayout.Meeting), node.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            // The visible files follow the new name ("<Titre> - Compte rendu.docx"…), never overwriting.
+            SessionLayout.RenameVisible(path, Log.Info);
             return true;
         }
         catch (Exception ex) { Log.Error("rename_session", ex); return false; }
@@ -355,11 +359,11 @@ public sealed class Bridge
                 count += n;
             }
             // persist mapping (replayed on regeneration)
-            var mapPath = Path.Combine(path, "speaker_map.json");
+            var mapPath = SessionLayout.Find(path, SessionLayout.SpeakerMap);
             var map = new Dictionary<string, string>();
             try { if (File.Exists(mapPath)) map = JsonSerializer.Deserialize<Dictionary<string, string>>(File.ReadAllText(mapPath)) ?? new(); } catch { }
             map[oldName] = newName;
-            WriteAtomic(mapPath, JsonSerializer.Serialize(map, new JsonSerializerOptions { WriteIndented = true }));
+            WriteAtomic(SessionLayout.ForWrite(path, SessionLayout.SpeakerMap), JsonSerializer.Serialize(map, new JsonSerializerOptions { WriteIndented = true }));
             return new { ok = true, count };
         }
         catch (Exception ex) { Log.Error("rename_speaker", ex); return new { ok = false, error = ex.Message }; }
@@ -379,7 +383,7 @@ public sealed class Bridge
         email = (email ?? "").Trim();
         try
         {
-            var p = Path.Combine(path, "emails.json");
+            var p = SessionLayout.ForWrite(path, SessionLayout.Emails);
             var map = _s.Query.ReadSessionEmails(path);
             if (string.IsNullOrEmpty(email)) map.Remove(name);
             else map[name] = email;
@@ -391,7 +395,7 @@ public sealed class Bridge
     }
 
     /// <summary>Summary with the key of the CR provider actually selected (it used to take the
-    /// Mistral key whatever cr_provider said). Returns the summary TEXT, read back from resume.md.</summary>
+    /// Mistral key whatever cr_provider said). Returns the summary TEXT, read back from its file.</summary>
     private async Task<object> GenerateSummaryAsync(string rawPath)
     {
         var path = SessionDir(rawPath);
@@ -412,7 +416,7 @@ public sealed class Bridge
         try
         {
             var file = await _s.Summarizer.SummarizeAsync(path, key!, settings, CancellationToken.None);
-            var text = SessionQuery.FileText(File.Exists(file) ? file : Path.Combine(path, "resume.md"));
+            var text = SessionQuery.FileText(File.Exists(file) ? file : SessionLayout.FindSummary(path) ?? file);
             return new { ok = true, text };
         }
         catch (Exception ex) { Log.Error("generate_summary", ex); return new { ok = false, error = ex.Message }; }
@@ -454,13 +458,12 @@ public sealed class Bridge
             var file = Path.Combine(folder, "Contexte pour Claude.md");
             var sb = new StringBuilder();
             sb.AppendLine("# Contexte pour Claude").AppendLine();
-            var transcripts = _s.Query.FindFiles(path, "Processed Transcript.txt");
-            if (transcripts.Count == 0) transcripts = _s.Query.FindFiles(path, "Transcript.txt");
-            var notes = SessionQuery.FileText(Path.Combine(path, "notes.md"));
+            var transcript = SessionLayout.FindTranscript(path);
+            var notes = SessionQuery.FileText(SessionLayout.NotesPath(path));
             if (!string.IsNullOrWhiteSpace(notes))
                 sb.AppendLine("## Notes").AppendLine().AppendLine(notes).AppendLine();
-            if (transcripts.Count > 0)
-                sb.AppendLine("## Transcription").AppendLine().AppendLine(SessionQuery.ReadText(transcripts[0]));
+            if (transcript is not null)
+                sb.AppendLine("## Transcription").AppendLine().AppendLine(SessionQuery.ReadText(transcript));
             File.WriteAllText(file, sb.ToString());
             return new { ok = true, folder, file };
         }
@@ -500,7 +503,7 @@ public sealed class Bridge
             dir = UniqueDir(Path.Combine(_s.Paths.RecordingsDir, _s.Paths.SessionFolderName(start, name, physical: false)));
             Directory.CreateDirectory(dir);
             Echo.Ai.AudioImport.WriteMetadata(dir, file, name, start, dur);
-            File.Move(tmpWav, Path.Combine(dir, "system.wav"));
+            File.Move(tmpWav, SessionLayout.ForWrite(dir, "system.wav"));
             tmpWav = null;
             Log.Info($"[import] audio {Path.GetFileName(file)} → {Path.GetFileName(dir)} ({dur:F0} s)");
 
@@ -554,10 +557,9 @@ public sealed class Bridge
                 ["physical"] = false,
                 ["started"] = DateTimeOffset.Now.ToUnixTimeSeconds(),
             };
-            File.WriteAllText(Path.Combine(dir, "meeting.json"), mj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(SessionLayout.ForWrite(dir, SessionLayout.Meeting), mj.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
-            var bfn = TeamsFileBase(name);
-            File.WriteAllText(Path.Combine(dir, $"{bfn} - Teams Transcript.txt"),
+            File.WriteAllText(SessionLayout.TranscriptPath(dir),
                 ToProcessedText(turns, name, meta.DateStr, atts), new UTF8Encoding(false));
 
             // cr_type: arg else settings.cr_type; lang: arg else settings (auto → no override) — like Python.
@@ -601,23 +603,13 @@ public sealed class Bridge
         return string.Join("\n", lines).Trim() + "\n";
     }
 
-    /// <summary>Mirror of <c>minutes.safe_filename(name)[:40].rstrip(" ,;-") or "Reunion"</c>.</summary>
-    private static string TeamsFileBase(string name)
-    {
-        var s = System.Text.RegularExpressions.Regex.Replace(name ?? "", "[<>:\"/\\\\|?*\\x00-\\x1f]", "");
-        s = System.Text.RegularExpressions.Regex.Replace(s, @"\s+", " ").Trim();
-        if (s.Length > 40) s = s[..40];
-        s = s.TrimEnd(' ', ',', ';', '-');
-        return s.Length == 0 ? "Reunion" : s;
-    }
-
     // ── screenshots ──────────────────────────────────────────────────────────
 
     private bool CaptureNow()
     {
         var sm = _s.Session;
         string folder = sm.IsRecording && !string.IsNullOrWhiteSpace(sm.SessionDir)
-            ? Path.Combine(sm.SessionDir!, "Captures")
+            ? SessionLayout.CapturesDir(sm.SessionDir!)
             : Path.Combine(_s.Paths.RecordingsDir, "Captures manuelles");
         Fire(async () =>
         {
@@ -633,7 +625,7 @@ public sealed class Bridge
     {
         var sm = _s.Session;
         if (!sm.IsRecording || string.IsNullOrWhiteSpace(sm.SessionDir)) return null;
-        var capDir = Path.Combine(sm.SessionDir!, "Captures");
+        var capDir = SessionLayout.CapturesDir(sm.SessionDir!);
         if (!Directory.Exists(capDir)) return null;
         List<string> files;
         try
@@ -685,11 +677,9 @@ public sealed class Bridge
         // purged by the retention policy (seen live: retention=1 day → "audio indisponible"
         // on any meeting older than a day although the mixdown was right there). Raw tracks
         // remain as fallbacks for sessions whose mixdown is not built yet.
-        foreach (var name in new[] { "- Audio.mp3", "system.wav", "system.mp3", "mic.wav", "mic.mp3" })
-        {
-            var found = _s.Query.FindFiles(path, name);
-            if (found.Count > 0) { src = found[0]; break; }
-        }
+        src = SessionLayout.FindAudio(path)
+              ?? new[] { "system.wav", "system.mp3", "mic.wav", "mic.mp3" }
+                  .Select(n => SessionLayout.Find(path, n)).FirstOrDefault(File.Exists);
         if (src is null) return Err("audio_unavailable", L("audio indisponible", "audio unavailable"));
         var ffmpeg = Echo.Audio.AudioPrep.ResolveFfmpeg();
         if (ffmpeg is null) return Err("audio_extract", L("extraction ffmpeg", "ffmpeg extraction"));
@@ -837,7 +827,7 @@ public sealed class Bridge
         if (string.IsNullOrWhiteSpace(sessionDir) || string.IsNullOrWhiteSpace(text)) return false;
         try
         {
-            var p = Path.Combine(sessionDir, "notes.md");
+            var p = SessionLayout.NotesPath(sessionDir);
             var ts = elapsed is not null ? SessionQuery.Hms((int)elapsed.Value) : "";
             var prefix = flagged ? "⚑ " : "";
             var line = string.IsNullOrEmpty(ts) ? $"- {prefix}{text.Trim()}" : $"- [{ts}] {prefix}{text.Trim()}";
@@ -854,7 +844,7 @@ public sealed class Bridge
     {
         var path = SessionDir(rawPath);
         if (path is null) return false;
-        try { WriteAtomic(Path.Combine(path, "notes.md"), md ?? ""); return true; }
+        try { WriteAtomic(SessionLayout.NotesPath(path), md ?? ""); return true; }
         catch (Exception ex) { Log.Error("write_notes", ex); return false; }
     }
 

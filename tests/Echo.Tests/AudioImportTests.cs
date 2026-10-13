@@ -49,19 +49,19 @@ public class AudioImportTests
             var start = new DateTime(2026, 9, 24, 9, 0, 0);
             AudioImport.WriteMetadata(dir, @"C:\x\Point hebdo.m4a", "Point hebdo", start, 1234.5);
 
-            var tr = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "system.json"))).RootElement;
+            var tr = JsonDocument.Parse(File.ReadAllText(Echo.Core.Storage.SessionLayout.Find(dir, "system.json"))).RootElement;
             Assert.True(tr.GetProperty("got_audio").GetBoolean());
             Assert.Equal(new DateTimeOffset(start).ToUnixTimeSeconds(), (long)tr.GetProperty("t0_wall_epoch").GetDouble());
             Assert.Equal(1234.5, tr.GetProperty("duration_s").GetDouble());
 
-            var mj = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "meeting.json"))).RootElement;
+            var mj = JsonDocument.Parse(File.ReadAllText(Echo.Core.Storage.SessionLayout.Find(dir, "meeting.json"))).RootElement;
             Assert.Equal("Point hebdo", mj.GetProperty("name").GetString());
             Assert.Equal("2026-09-24 09:00", mj.GetProperty("date_str").GetString());
             Assert.False(mj.GetProperty("physical").GetBoolean());
             Assert.Equal("Point hebdo.m4a", mj.GetProperty("imported_from").GetString());
 
             // session.json carries the duration shown in the meeting list.
-            var sj = JsonDocument.Parse(File.ReadAllText(Path.Combine(dir, "session.json"))).RootElement;
+            var sj = JsonDocument.Parse(File.ReadAllText(Echo.Core.Storage.SessionLayout.Find(dir, "session.json"))).RootElement;
             Assert.Equal(1234.5, sj.GetProperty("duration_s").GetDouble());
             Assert.False(File.Exists(Path.Combine(dir, "mic.json")));   // no "Vous" track
         }
