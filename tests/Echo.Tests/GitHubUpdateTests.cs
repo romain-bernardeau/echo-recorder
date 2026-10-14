@@ -11,7 +11,7 @@ namespace Echo.Tests;
 /// </summary>
 public class GitHubUpdateTests
 {
-    private const string GitHub = "https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json";
+    private const string GitHub = "https://github.com/romainio/echo-recorder/releases/latest/download/version.json";
 
     [Fact]
     public void NewInstall_DefaultsToGitHub() => Assert.Equal(GitHub, new AppSettings().UpdateUrl);
@@ -20,6 +20,7 @@ public class GitHubUpdateTests
     [InlineData(@"C:\\Users\\someone\\Shared - Echo\\MAJ\\version.json")]   // synced shared folder
     [InlineData(@"\\\\server\\share\\MAJ\\version.json")]                  // UNC path
     [InlineData("")]                                                        // updates were off
+    [InlineData("https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json")] // renamed account
     public void LocalOrEmptySource_MovesToGitHub(string jsonEscapedUrl)
     {
         using var p = new TempProfile();
@@ -44,6 +45,6 @@ public class GitHubUpdateTests
 
     [Fact]
     public void RelativeZip_ResolvesNextToTheLatestReleaseAsset()
-        => Assert.Equal("https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/Echo-5.7.1.zip",
+        => Assert.Equal("https://github.com/romainio/echo-recorder/releases/latest/download/Echo-5.7.1.zip",
                         Updater.ResolveUrl(EchoConstants.DefaultUpdateUrl, "Echo-5.7.1.zip"));
 }

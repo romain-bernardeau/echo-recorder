@@ -80,7 +80,7 @@ $setPath = Join-Path $setDir "settings.json"
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 # Les mises a jour viennent de la derniere release GitHub (publique, sans compte) : le poste
 # n'a plus besoin de garder le dossier partage synchronise apres l'installation.
-$urlJson = '"https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json"'
+$urlJson = '"https://github.com/romainio/echo-recorder/releases/latest/download/version.json"'
 if (-not (Test-Path $setPath)) {
     [System.IO.File]::WriteAllText($setPath, "{`n  ""update_url"": $urlJson`n}`n", $utf8)
 } else {

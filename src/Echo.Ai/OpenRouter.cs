@@ -58,7 +58,7 @@ public sealed class OpenRouterClient : IChatClient, IModelCatalog
 {
     public const string DefaultBaseUrl = "https://openrouter.ai/api/v1";
     /// <summary>Attribution headers OpenRouter recommends (app ranking); no user data.</summary>
-    public const string Referer = "https://github.com/romain-bernardeau/echo-recorder";
+    public const string Referer = "https://github.com/romainio/echo-recorder";
     public const string Title = "Echo";
 
     private static readonly TimeSpan[] DefaultRetryDelays =

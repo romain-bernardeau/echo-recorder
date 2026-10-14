@@ -145,7 +145,7 @@ if ($zips.Count -gt $KeepZips) {
 # -- 9. release GitHub (source des mises a jour) ---------------------------------------
 if (-not $SkipGitHub) {
     Step "Release GitHub v$Version"
-    $ghRepo = "romain-bernardeau/echo-recorder"
+    $ghRepo = "romainio/echo-recorder"
     $title = "Echo $Version"
     $body = if ($Notes) { $Notes } else { $title }
     & gh release create "v$Version" $zipPath $vjPath --repo $ghRepo --target main --title $title --notes $body

@@ -27,7 +27,7 @@ INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
 MISES À JOUR
 ------------
 Automatiques : à chaque démarrage, Echo vérifie la dernière version publiée sur
-GitHub (github.com/romain-bernardeau/echo-recorder) et vous propose la
+GitHub (github.com/romainio/echo-recorder) et vous propose la
 nouvelle version quand il y en a une (Paramètres → « Vérifier maintenant » pour
 forcer). En cas de souci après une mise à jour : Paramètres → « Version
 précédente » restaure l'ancienne installation.
@@ -64,4 +64,4 @@ installées ») : cliquez sur Echo → Désinstaller. Aucun droit admin requis.
 Vos enregistrements et réglages sont conservés (supprimez %APPDATA%\Echo et
 %LOCALAPPDATA%\Echo si vous voulez aussi les retirer).
 
-Support : https://github.com/romain-bernardeau/echo-recorder/issues
+Support : https://github.com/romainio/echo-recorder/issues

@@ -8,7 +8,7 @@ namespace Echo.Tests;
 /// </summary>
 public class HelpUrlTests
 {
-    private const string Base = "https://github.com/romain-bernardeau/echo-recorder/blob/main/help/";
+    private const string Base = "https://github.com/romainio/echo-recorder/blob/main/help/";
 
     [Theory]
     [InlineData("fr", Base + "README.fr.md")]

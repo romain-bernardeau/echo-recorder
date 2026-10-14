@@ -77,13 +77,19 @@ public sealed class SettingsStore : ISettingsStore
     /// SharePoint folder point at a local "…\MAJ\version.json", which breaks as soon as the
     /// folder is no longer synced; an empty value disabled updates altogether. Both move to
     /// the GitHub URL. A custom https source is left alone.
+    /// 5.8.1: the GitHub account was renamed (romain-bernardeau → romainio). GitHub redirects the
+    /// old name only until someone else claims it, so the old repository URL moves too.
     /// </summary>
     private static AppSettings MigrateUpdateUrl(AppSettings s)
     {
         var url = s.UpdateUrl?.Trim() ?? "";
-        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) s.UpdateUrl = EchoConstants.DefaultUpdateUrl;
+        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+            || url.StartsWith(LegacyGitHubRepo, StringComparison.OrdinalIgnoreCase))
+            s.UpdateUrl = EchoConstants.DefaultUpdateUrl;
         return s;
     }
+
+    private const string LegacyGitHubRepo = "https://github.com/romain-bernardeau/";
 
     private static AppSettings MigrateToFreeTier(AppSettings s)
     {
