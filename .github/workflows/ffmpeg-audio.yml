@@ -1,0 +1,57 @@
+# Builds the audio-only, LGPL FFmpeg bundled with Echo (tools/ffmpeg-audio/build.sh).
+# Run by hand from the Actions tab. With "release" checked, it publishes a GitHub release
+# ffmpeg-audio-<version> holding the binary, the license texts and the complete source used.
+# That release is never marked "latest": Echo's updates read the latest v* release.
+name: ffmpeg-audio
+
+on:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish the ffmpeg-audio-<version> release"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: sudo apt-get update && sudo apt-get install -y mingw-w64 nasm make xz-utils gnupg
+
+      - name: Build
+        working-directory: tools/ffmpeg-audio
+        run: bash build.sh
+
+      - name: Package
+        working-directory: tools/ffmpeg-audio/out
+        run: |
+          VERSION=$(grep -m1 '^FFMPEG_VERSION=' ../build.sh | cut -d= -f2)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          zip -9 "ffmpeg-audio-$VERSION-win64.zip" ffmpeg.exe *.txt *.md
+          sha256sum "ffmpeg-audio-$VERSION-win64.zip" src/* | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-audio
+          path: |
+            tools/ffmpeg-audio/out/ffmpeg-audio-*-win64.zip
+            tools/ffmpeg-audio/out/SHA256SUMS.txt
+            tools/ffmpeg-audio/out/src/*
+
+      - name: Release
+        if: ${{ inputs.release }}
+        working-directory: tools/ffmpeg-audio/out
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "ffmpeg-audio-$VERSION" \
+            "ffmpeg-audio-$VERSION-win64.zip" SHA256SUMS.txt src/* \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "FFmpeg $VERSION, audio only (LGPL) for Echo" \
+            --notes-file BUILD-INFO.txt
