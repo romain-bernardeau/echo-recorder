@@ -2,27 +2,29 @@
 ==============================
 
 Echo enregistre vos réunions Teams (ou en présentiel), transcrit qui a dit quoi,
-et rédige un compte rendu prêt à envoyer — sans robot dans la réunion.
+et rédige un compte rendu prêt à envoyer, sans robot dans la réunion.
 
 Le dossier Echo partagé contient :
-  - Installation\ : ce dont vous avez besoin pour installer (ce fichier + l'installeur)
-  - MAJ\          : la version courante, lue par l'installeur
+  - Installation\ : l'installeur Echo-Setup.exe et ce fichier
+  - MAJ\          : la version courante (archive et version.json)
 
-INSTALLATION (une seule fois, ~2 minutes, sans droits admin)
-------------------------------------------------------------
-1. Synchronisez le dossier Echo sur votre PC :
-   bouton « Synchroniser » (ou « Ajouter un raccourci à OneDrive ») dans SharePoint ou Teams.
-   Si vous lisez ce fichier depuis l'Explorateur Windows, c'est déjà fait.
+INSTALLATION (une seule fois, ~1 minute, sans droits admin)
+-----------------------------------------------------------
+1. Double-cliquez sur « Echo-Setup.exe » (dossier Installation, ou
+   téléchargement direct : https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe).
 
-2. Dans le dossier « Installation », double-cliquez sur « Installer Echo.cmd ».
-   L'application s'installe dans votre profil et se lance ; un raccourci
-   « Echo » apparaît dans le menu Démarrer. (Laissez le dossier « MAJ » à côté :
-   l'installeur y lit la version à installer. Ensuite, la synchronisation n'est plus
-   nécessaire : les mises à jour arrivent directement de GitHub.)
+2. Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur
+   « Informations complémentaires », puis « Exécuter quand même » (l'installeur
+   n'est pas encore signé numériquement).
 
-3. Collez votre clé API Mistral dans Paramètres → Intégrations.
-   Chacun utilise SA propre clé. Le guide pas-à-pas est dans l'application :
-   Paramètres → Aide, onglet « Clé API Mistral » (création comprise, ~2 minutes).
+3. Cliquez sur « Installer ». Echo s'installe dans votre profil, ajoute un
+   raccourci « Echo » au menu Démarrer et se lance.
+
+4. Ajoutez votre clé API dans Paramètres → Fournisseurs, puis cliquez sur
+   « Tester ». Chacun utilise SA propre clé. Le bouton Aide explique comment en
+   obtenir une gratuitement (Mistral, Google, Cloudflare ou OpenRouter).
+
+Pour réinstaller, relancez Echo-Setup.exe : réglages, clés et réunions sont conservés.
 
 MISES À JOUR
 ------------
@@ -36,13 +38,13 @@ PRÉREQUIS
 ---------
 - Windows 11 (ou 10 avec WebView2)
 - Microsoft Teams (nouvelle version)
-- Une clé API Mistral
+- Une clé API (Mistral, Google, Cloudflare ou OpenRouter)
 
 BON À SAVOIR
 ------------
 - Vos enregistrements restent sur VOTRE PC (dossier local, bouton « Ouvrir le
-  dossier local » dans Echo). Seul l'audio à transcrire est envoyé à Mistral
-  (serveurs UE) ; aucun bot ne rejoint la réunion.
+  dossier local » dans Echo). Seul l'audio à transcrire est envoyé au fournisseur
+  d'IA choisi ; aucun bot ne rejoint la réunion.
 - Prévenez les participants que la réunion est enregistrée : Echo ne le fait
   pas à votre place.
 - Premier lancement : si les noms des intervenants n'apparaissent pas, quittez
@@ -52,7 +54,7 @@ BON À SAVOIR
 OÙ EST INSTALLÉ ECHO ?
 ----------------------
 - Le programme : %LOCALAPPDATA%\Programs\Echo (dans votre profil, sans droits
-  admin — une copie par utilisateur, ~270 Mo).
+  admin, une copie par utilisateur, ~270 Mo).
 - Vos données, jamais touchées par une mise à jour ou une réinstallation :
   réglages + clé dans %APPDATA%\Echo, enregistrements dans %LOCALAPPDATA%\Echo
   (bouton « Ouvrir le dossier local » dans l'application).

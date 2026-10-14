@@ -2,10 +2,11 @@
 #
 # Structure produite dans -Root (defaut = variable d'environnement ECHO_PUBLISH_ROOT) :
 #   <Root>\MAJ\           version.json + Echo-<version>.zip   (source de verite : la version courante)
-#   <Root>\Installation\  Installer Echo.cmd + install.ps1 + LISEZMOI.txt  (ce qu'un collegue lance)
+#   <Root>\Installation\  Echo-Setup.exe + LISEZMOI.txt  (ce qu'un collegue lance)
 #
-# L'installeur ET les mises a jour lisent le MEME MAJ\version.json : publier = deposer ici,
-# tous les postes se mettent a jour au demarrage d'Echo.
+# Echo-Setup.exe (Inno Setup, deploy\Echo.iss) installe la version publiee ; ensuite chaque poste se
+# met a jour au demarrage d'Echo depuis la release GitHub (zip + version.json + Echo-Setup.exe).
+# Prerequis : Inno Setup 6 (winget install JRSoftware.InnoSetup --scope user).
 #
 # Usage :
 #   .\publish.ps1 -Version 5.1.0 -Notes "Corrections vocabulaire"
@@ -125,12 +126,25 @@ $vjPath = Join-Path $majDir "version.json"
 [System.IO.File]::WriteAllText($vjPath, ($vj | ConvertTo-Json), (New-Object System.Text.UTF8Encoding($false)))
 Write-Host ("   MAJ\{0} ({1:N0} Mo), sha256 {2}..." -f $zipName, ((Get-Item $zipPath).Length / 1MB), $sha.Substring(0, 12))
 
-# -- 7. installeur -> Installation\ ---------------------------------------------------
-Step "Installation"
+# -- 7. installeur Echo-Setup.exe (Inno Setup) -> Installation\ ----------------------------
+Step "Installeur Echo-Setup.exe"
+$iscc = @((Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+          (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe")) | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $iscc) { $iscc = (Get-Command ISCC -ErrorAction SilentlyContinue).Source }
+if (-not $iscc) { throw "Inno Setup 6 introuvable (ISCC.exe). Installez-le : winget install JRSoftware.InnoSetup --scope user" }
+$setupOut = Join-Path $repo "dist"
+& $iscc /Q "/DAppVer=$Version" "/DStageDir=$stage" "/DOutDir=$setupOut" (Join-Path $repo "deploy\Echo.iss")
+if ($LASTEXITCODE -ne 0) { throw "Compilation de l'installeur en echec (ISCC $LASTEXITCODE)." }
+$setupPath = Join-Path $setupOut "Echo-Setup.exe"
+Write-Host ("   Echo-Setup.exe ({0:N0} Mo)" -f ((Get-Item $setupPath).Length / 1MB))
 New-Item -ItemType Directory -Force $instDir | Out-Null
-foreach ($f in @("Installer Echo.cmd", "install.ps1", "LISEZMOI.txt")) {
-    Copy-Item (Join-Path $repo "deploy\$f") (Join-Path $instDir $f) -Force
-    Write-Host "   Installation\$f"
+Copy-Item $setupPath (Join-Path $instDir "Echo-Setup.exe") -Force
+Copy-Item (Join-Path $repo "deploy\LISEZMOI.txt") (Join-Path $instDir "LISEZMOI.txt") -Force
+Write-Host "   Installation\Echo-Setup.exe + LISEZMOI.txt"
+# l'ancien installeur (script) est remplace par Echo-Setup.exe
+foreach ($old in @("Installer Echo.cmd", "install.ps1")) {
+    $p = Join-Path $instDir $old
+    if (Test-Path $p) { Remove-Item $p -Force; Write-Host "   suppression ancien installeur : Installation\$old" }
 }
 
 # -- 8. menage : garder les N zips les plus recents dans MAJ ------------------------------
@@ -148,7 +162,7 @@ if (-not $SkipGitHub) {
     $ghRepo = "romainio/echo-recorder"
     $title = "Echo $Version"
     $body = if ($Notes) { $Notes } else { $title }
-    & gh release create "v$Version" $zipPath $vjPath --repo $ghRepo --target main --title $title --notes $body
+    & gh release create "v$Version" $zipPath $vjPath $setupPath --repo $ghRepo --target main --title $title --notes $body
     if ($LASTEXITCODE -ne 0) { throw "Creation de la release GitHub en echec (gh). Le dossier partage est a jour ; relancez avec -SkipTests apres correction." }
     Write-Host "   https://github.com/$ghRepo/releases/tag/v$Version"
 }

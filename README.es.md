@@ -46,22 +46,25 @@ resumir se envían al proveedor de IA que usted elija, con **su propia clave API
 
 ## Instalación
 
-La publicación de versiones en [Releases](../../releases), con un instalador descargable, está en
-preparación. Echo se instala en su perfil de usuario (`%LOCALAPPDATA%\Programs\Echo`), sin
-derechos de administrador, y se actualiza solo. En el primer inicio, pegue su clave API en
+**[Descargue Echo-Setup.exe](https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe)**
+y haga doble clic en él. Echo se instala en su perfil de usuario (`%LOCALAPPDATA%\Programs\Echo`),
+sin derechos de administrador, y se actualiza solo. En el primer inicio, pegue su clave API en
 Ajustes > Proveedores: los modelos marcados como **Free** funcionan con una clave gratuita.
+
+El instalador aún no está firmado: si Windows muestra «Windows protegió su PC», pulse «Más
+información» y luego «Ejecutar de todas formas». Todas las versiones están en
+[Releases](../../releases).
 
 Requisitos: Windows 10 u 11 con WebView2, Microsoft Teams (nueva versión). La interfaz está
 disponible en francés e inglés.
 
 ## Hoja de ruta
 
-- **Versiones publicadas en GitHub**, con un instalador descargable y actualizaciones servidas
-  desde GitHub.
 - Versión para **macOS**.
 - Compatibilidad con **Google Meet** y **Zoom** (detección de la reunión y nombres de los
   participantes).
-- Ayuda en línea en GitHub, botón «Informar de un problema» en la aplicación.
+- Botón «Informar de un problema» en la aplicación.
+- Instalador firmado (sin aviso de Windows en la primera instalación).
 
 ## Compilar
 

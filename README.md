@@ -45,20 +45,23 @@ participants know the meeting is being recorded.
 
 ## Installation
 
-Downloadable releases with an installer are being set up in [Releases](../../releases). Echo
-installs in your user profile (`%LOCALAPPDATA%\Programs\Echo`), without admin rights, and updates
-itself. On first launch, paste your API key in Settings > Providers: models tagged **Free** work
-with a free key.
+**[Download Echo-Setup.exe](https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe)**
+and double-click it. Echo installs in your user profile (`%LOCALAPPDATA%\Programs\Echo`), without
+admin rights, and updates itself. On first launch, paste your API key in Settings > Providers:
+models tagged **Free** work with a free key.
+
+The installer is not signed yet: if Windows shows "Windows protected your PC", click "More info",
+then "Run anyway". All versions are in [Releases](../../releases).
 
 Requirements: Windows 10 or 11 with WebView2, Microsoft Teams (new version). The interface is
 available in French and English.
 
 ## Roadmap
 
-- **Releases on GitHub** with a downloadable installer and updates served from GitHub.
 - **macOS** version.
 - **Google Meet** and **Zoom** support (meeting detection and speaker names).
-- Online help on GitHub, "report a problem" button in the app.
+- "Report a problem" button in the app.
+- Signed installer (no Windows warning on first install).
 
 ## Building
 

@@ -55,7 +55,9 @@ root; `SessionLayoutMigration` tidies older folders at startup (moves only, neve
 ## Distribution and updates
 
 `publish.ps1` runs the tests, publishes self-contained, bundles `ffmpeg.exe` and writes a zip
-plus `version.json` (version, relative zip URL, mandatory sha256). Installed copies check
+plus `version.json` (version, relative zip URL, mandatory sha256), then builds `Echo-Setup.exe`
+with Inno Setup (`deploy/Echo.iss`: per-user, no admin, no uninstaller of its own since Echo
+registers itself in Installed apps at startup). All three go to the GitHub release. Installed copies check
 `update_url` at startup, download and verify the zip, then a detached script swaps the files
 and keeps a `.previous` copy for rollback.
 

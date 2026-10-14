@@ -22,6 +22,22 @@ PC.
 
 ## Prise en main
 
+<a id="install"></a>
+
+### Installer Echo
+
+1. Téléchargez **[Echo-Setup.exe](https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe)**,
+   puis double-cliquez dessus.
+2. Si Windows affiche « Windows a protégé votre ordinateur », cliquez sur **« Informations
+   complémentaires »**, puis sur **« Exécuter quand même »**. Ce message apparaît pour toute
+   application qui n'a pas encore de signature numérique.
+3. Cliquez sur **« Installer »**. Echo s'installe dans votre profil (aucun droit administrateur),
+   ajoute un raccourci au menu Démarrer et se lance.
+
+Ensuite, Echo se met à jour tout seul. Pour réinstaller, relancez simplement `Echo-Setup.exe` :
+vos réglages, vos clés et vos réunions sont conservés. Pour désinstaller : **Paramètres Windows >
+Applications > Applications installées > Echo**.
+
 ### Trois étapes
 
 1. **Ajoutez une clé API.** C'est à faire une seule fois. Echo a besoin de la clé d'un fournisseur

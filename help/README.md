@@ -20,6 +20,20 @@ writes minutes ready to send. No bot joins the meeting: everything happens on yo
 
 ## Getting started
 
+<a id="install"></a>
+
+### Install Echo
+
+1. Download **[Echo-Setup.exe](https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe)**,
+   then double-click it.
+2. If Windows shows "Windows protected your PC", click **"More info"**, then **"Run anyway"**. This
+   message appears for any app that does not carry a digital signature yet.
+3. Click **"Install"**. Echo installs in your user profile (no admin rights), adds a Start menu
+   shortcut and starts.
+
+From then on, Echo updates itself. To reinstall, just run `Echo-Setup.exe` again: your settings,
+keys and meetings are kept. To uninstall: **Windows Settings > Apps > Installed apps > Echo**.
+
 ### Three steps
 
 1. **Add an API key.** You do this once. Echo needs a key from an AI provider to transcribe and to

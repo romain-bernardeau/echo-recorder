@@ -21,6 +21,21 @@ un acta lista para enviar. Ningún bot entra en la reunión: todo pasa en tu PC.
 
 ## Primeros pasos
 
+<a id="install"></a>
+
+### Instalar Echo
+
+1. Descarga **[Echo-Setup.exe](https://github.com/romainio/echo-recorder/releases/latest/download/Echo-Setup.exe)**
+   y haz doble clic en él.
+2. Si Windows muestra «Windows protegió su PC», pulsa **«Más información»** y luego **«Ejecutar de
+   todas formas»**. Este mensaje aparece con cualquier aplicación que aún no tiene firma digital.
+3. Pulsa **«Instalar»**. Echo se instala en tu perfil (sin derechos de administrador), añade un
+   acceso directo al menú Inicio y se abre.
+
+A partir de ahí, Echo se actualiza solo. Para reinstalar, vuelve a ejecutar `Echo-Setup.exe`: tus
+ajustes, claves y reuniones se conservan. Para desinstalar: **Configuración de Windows >
+Aplicaciones > Aplicaciones instaladas > Echo**.
+
 ### Tres pasos
 
 1. **Añade una clave API.** Solo una vez. Echo necesita la clave de un proveedor de IA para
