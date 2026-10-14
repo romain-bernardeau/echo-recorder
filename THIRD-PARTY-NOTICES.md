@@ -10,8 +10,8 @@ each under its own license.
   build made for Echo, without any GPL or nonfree component and without video codecs.
 - License texts next to the binary: `bin/FFMPEG-COPYING.LGPLv2.1.txt`, `bin/FFMPEG-LICENSE.md`,
   `bin/LAME-COPYING.txt`; versions, checksums and build options in `bin/BUILD-INFO.txt`.
-- Complete corresponding source: the `ffmpeg-audio-9.0.2` release of this repository holds the
-  exact FFmpeg and LAME source archives and the build script
+- Complete corresponding source: every Echo release on GitHub has the exact FFmpeg and LAME
+  source archives and the build script attached
   ([tools/ffmpeg-audio/build.sh](tools/ffmpeg-audio/build.sh)), built by the
   [ffmpeg-audio workflow](.github/workflows/ffmpeg-audio.yml). You may rebuild it, modify it and
   replace `bin/ffmpeg.exe` with your own build.

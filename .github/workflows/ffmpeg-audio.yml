@@ -1,25 +1,22 @@
 # Builds the audio-only, LGPL FFmpeg bundled with Echo (tools/ffmpeg-audio/build.sh).
-# Run by hand from the Actions tab. With "release" checked, it publishes a GitHub release
-# ffmpeg-audio-<version> holding the binary, the license texts and the complete source used.
-# That release is never marked "latest": Echo's updates read the latest v* release.
+# Run by hand from the Actions tab. The "ffmpeg-audio" artifact holds the binary, the license texts
+# and the complete source used; tools/get-ffmpeg.ps1 -From <artifact folder> caches it, and
+# publish.ps1 attaches binary and source to every Echo release.
 name: ffmpeg-audio
 
 on:
   workflow_dispatch:
-    inputs:
-      release:
-        description: "Publish the ffmpeg-audio-<version> release"
-        type: boolean
-        default: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Toolchain
         run: sudo apt-get update && sudo apt-get install -y mingw-w64 nasm make xz-utils gnupg
@@ -36,22 +33,10 @@ jobs:
           zip -9 "ffmpeg-audio-$VERSION-win64.zip" ffmpeg.exe *.txt *.md
           sha256sum "ffmpeg-audio-$VERSION-win64.zip" src/* | tee SHA256SUMS.txt
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ffmpeg-audio
           path: |
             tools/ffmpeg-audio/out/ffmpeg-audio-*-win64.zip
             tools/ffmpeg-audio/out/SHA256SUMS.txt
             tools/ffmpeg-audio/out/src/*
-
-      - name: Release
-        if: ${{ inputs.release }}
-        working-directory: tools/ffmpeg-audio/out
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "ffmpeg-audio-$VERSION" \
-            "ffmpeg-audio-$VERSION-win64.zip" SHA256SUMS.txt src/* \
-            --target "$GITHUB_SHA" --latest=false \
-            --title "FFmpeg $VERSION, audio only (LGPL) for Echo" \
-            --notes-file BUILD-INFO.txt

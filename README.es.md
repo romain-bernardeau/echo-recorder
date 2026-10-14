@@ -84,7 +84,7 @@ Los errores y las ideas son bienvenidos en [Issues](../../issues).
 ## Licencia
 
 [MIT](LICENSE), Copyright (c) 2026 Echo contributors. Componentes de terceros (incluido FFmpeg,
-distribuido como programa de audio independiente bajo LGPL, fuentes en la release ffmpeg-audio): `THIRD-PARTY-NOTICES.md`.
+distribuido como programa de audio independiente bajo LGPL, fuentes adjuntas a cada release): `THIRD-PARTY-NOTICES.md`.
 
 Microsoft Teams, Windows, Google Meet, Zoom y macOS son marcas de sus respectivos propietarios.
 Echo es un proyecto independiente, sin afiliación ni respaldo de dichas empresas.

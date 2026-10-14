@@ -80,15 +80,41 @@ public sealed class StoragePaths
         return $"{stamp} - {name}";
     }
 
+    /// <summary>True when <paramref name="dir"/> must not become the recordings root: a drive root,
+    /// a network path, the user profile or one of its main folders, Windows or Program Files.
+    /// Every path guard and clean-up is anchored to that root, so it has to be a folder of its own.</summary>
+    public static bool IsUnsafeRecordingsRoot(string? dir)
+    {
+        if (string.IsNullOrWhiteSpace(dir)) return true;
+        string full;
+        try { full = Path.GetFullPath(dir).TrimEnd('\\', '/'); }
+        catch { return true; }
+        if (full.StartsWith(@"\\", StringComparison.Ordinal) || full.Length <= 2) return true;   // UNC, "C:"
+        var sf = new[]
+        {
+            Environment.SpecialFolder.UserProfile, Environment.SpecialFolder.Desktop,
+            Environment.SpecialFolder.MyDocuments, Environment.SpecialFolder.ApplicationData,
+            Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolder.Windows,
+            Environment.SpecialFolder.ProgramFiles, Environment.SpecialFolder.ProgramFilesX86,
+            Environment.SpecialFolder.System,
+        };
+        var banned = sf.Select(Environment.GetFolderPath)
+            .Append(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"))
+            .Append(Environment.GetEnvironmentVariable("OneDrive") ?? "")
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Select(p => p.TrimEnd('\\', '/'));
+        return banned.Any(b => string.Equals(b, full, StringComparison.OrdinalIgnoreCase));
+    }
+
     /// <summary>Sanitise a meeting name for use in a folder name (mirrors the Python rule).</summary>
     public static string SafeName(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return "";
         var sb = new StringBuilder(raw.Length);
         foreach (var c in raw)
-            if ("<>:\"/|?*\\".IndexOf(c) < 0) sb.Append(c);
+            if ("<>:\"/|?*\\".IndexOf(c) < 0 && !char.IsControl(c)) sb.Append(c);
         var s = sb.ToString().Trim();
         if (s.Length > 50) s = s[..50];
-        return s.TrimEnd(' ', ',', ';', '-');
+        return s.TrimEnd(' ', ',', ';', '-', '.');
     }
 }

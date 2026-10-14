@@ -319,7 +319,11 @@ public sealed class Bridge
     private object DeleteSession(string rawPath)
     {
         var path = SessionDir(rawPath);
+        // only a meeting folder: Echo's files inside, or its "yyyyMMdd - HHhmm - " name
         if (path is null) return Err("not_found", L("introuvable", "not found"));
+        if (!SessionLayout.IsSession(path)
+            && !System.Text.RegularExpressions.Regex.IsMatch(Path.GetFileName(path), @"^\d{8} - \d{2}h\d{2}"))
+            return Err("not_found", L("introuvable", "not found"));
         if (_s.Session.IsRecording && SamePath(_s.Session.SessionDir, path))
             return Err("recording_active", L("Réunion en cours d'enregistrement", "Meeting currently being recorded"));
         try
@@ -702,7 +706,12 @@ public sealed class Bridge
             using var p = Process.Start(psi)!;
             var errTask = p.StandardError.ReadToEndAsync();      // drain stderr so the pipe never blocks
             using var ms = new MemoryStream();
-            p.StandardOutput.BaseStream.CopyTo(ms);
+            var copy = p.StandardOutput.BaseStream.CopyToAsync(ms);
+            if (!copy.Wait(TimeSpan.FromSeconds(60)))                     // a clip takes well under a second
+            {
+                try { p.Kill(entireProcessTree: true); } catch { }
+                return Err("audio_extract", L("extraction ffmpeg", "ffmpeg extraction"));
+            }
             errTask.GetAwaiter().GetResult();
             p.WaitForExit();
             if (p.ExitCode != 0 || ms.Length == 0) return Err("audio_extract", L("extraction ffmpeg", "ffmpeg extraction"));
@@ -860,9 +869,17 @@ public sealed class Bridge
         .Select(n => n!)
         .ToHashSet(StringComparer.Ordinal);
 
+    /// <summary>Settings the page must never write: where updates come from, the folder every path
+    /// guard is anchored to (changed only through the native folder picker), and internal state.
+    /// A script injected in the page would otherwise widen its reach through them.</summary>
+    private static readonly HashSet<string> NativeOnlyKeys = new(StringComparer.Ordinal)
+    {
+        "update_url", "recordings_dir", "key_store", "setup_done", "models_migration",
+    };
+
     private bool SetSetting(string key, JsonElement value)
     {
-        if (string.IsNullOrWhiteSpace(key) || !SettingKeys.Contains(key))
+        if (string.IsNullOrWhiteSpace(key) || !SettingKeys.Contains(key) || NativeOnlyKeys.Contains(key))
         {
             Log.Error($"set_setting: unknown key '{key}' refused");
             return false;
@@ -880,6 +897,13 @@ public sealed class Bridge
     {
         var chosen = _shell.PickFolder(_s.Paths.RecordingsDir);
         if (string.IsNullOrWhiteSpace(chosen)) return null;
+        if (StoragePaths.IsUnsafeRecordingsRoot(chosen))
+        {
+            Log.Info($"pick_recordings_dir refused: {chosen}");
+            _s.Notifier.Notify(L("Choisissez un dossier dédié aux enregistrements (par exemple Documents\\Echo), pas la racine d'un disque, un dossier réseau ou un dossier système.",
+                              "Choose a folder dedicated to recordings (for example Documents\\Echo), not a drive root, a network folder or a system folder."));
+            return null;
+        }
         try
         {
             Directory.CreateDirectory(chosen);
@@ -1021,7 +1045,8 @@ public sealed class Bridge
         try
         {
             using var req = new HttpRequestMessage(HttpMethod.Get,
-                "https://generativelanguage.googleapis.com/v1beta/models?key=" + Uri.EscapeDataString(k));
+                "https://generativelanguage.googleapis.com/v1beta/models");
+            req.Headers.TryAddWithoutValidation("x-goog-api-key", k);   // header, not URL
             using var resp = await Http.SendAsync(req);
             if (resp.IsSuccessStatusCode) return new { ok = true, msg = _s.I18n.T("gkey_valid") };
             return new { ok = false, msg = _s.I18n.T("gkey_invalid").Replace("{e}", ((int)resp.StatusCode).ToString()) };
@@ -1537,17 +1562,17 @@ public sealed class Bridge
 
     // ── shell helpers ─────────────────────────────────────────────────────────
 
-    /// <summary>File types that would RUN something when "opened" through the shell.</summary>
-    private static readonly HashSet<string> BlockedExtensions = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>The only file types the page may open through the shell: what Echo writes in a
+    /// meeting folder (minutes, transcript, notes, audio, captures). An allow-list, because the
+    /// list of types that run something when opened (.chm, .xll, .iso, .rdp...) never ends.</summary>
+    private static readonly HashSet<string> OpenableExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".exe", ".com", ".scr", ".pif", ".bat", ".cmd", ".ps1", ".psm1", ".psd1", ".ps1xml", ".psc1",
-        ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".ws", ".hta", ".msi", ".msp", ".mst",
-        ".lnk", ".url", ".scf", ".inf", ".reg", ".cpl", ".msc", ".jar", ".dll", ".sys", ".ocx",
-        ".appref-ms", ".application", ".gadget", ".settingcontent-ms", ".library-ms", ".diagcab",
+        ".eml", ".docx", ".md", ".txt", ".pdf", ".json", ".vtt", ".csv",
+        ".mp3", ".wav", ".m4a", ".ogg", ".flac", ".png", ".jpg", ".jpeg",
     };
 
-    /// <summary>open_path from the page: an http(s) link, or an existing file/folder inside the
-    /// recordings folder that is not an executable or a script.</summary>
+    /// <summary>open_path from the page: an http(s) link, or an existing folder or file of an
+    /// allowed type inside the recordings folder.</summary>
     private bool OpenUserPath(string p)
     {
         if (string.IsNullOrWhiteSpace(p)) return false;
@@ -1567,9 +1592,10 @@ public sealed class Bridge
             Log.Error($"open_path refused (outside the recordings folder or missing): {p}");
             return false;
         }
-        if (File.Exists(full) && BlockedExtensions.Contains(Path.GetExtension(full)))
+        if (full.IndexOf(':', 2) >= 0                                       // alternate data stream
+            || File.Exists(full) && !OpenableExtensions.Contains(Path.GetExtension(full)))
         {
-            Log.Error($"open_path refused (executable type): {p}");
+            Log.Error($"open_path refused (file type): {p}");
             return false;
         }
         ShellOpen(full);

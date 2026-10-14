@@ -155,7 +155,7 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         var (system, contents) = MapMessages(messages);
         var payload = BuildGeneratePayload(contents, temperature, jsonObject, system);
         return SendWithRetryAsync(
-            () => JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}", payload),
+            () => JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent", payload, apiKey),
             $"chat {model}", ct);
     }
 
@@ -261,7 +261,7 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
             };
 
             var body = await SendWithRetryAsync(
-                () => JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}", payload),
+                () => JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent", payload, apiKey),
                 $"transcription {fileName}", ct);
 
             var text = ExtractText(body);
@@ -290,7 +290,12 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         }
         finally
         {
-            if (uploadedFileName is not null) await TryDeleteFileAsync(apiKey, uploadedFileName, ct);
+            // not ct: after a cancel the meeting audio must still be removed from Google's servers
+            if (uploadedFileName is not null)
+            {
+                using var cleanup = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                await TryDeleteFileAsync(apiKey, uploadedFileName, cleanup.Token);
+            }
         }
     }
 
@@ -373,10 +378,11 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         string apiKey, byte[] bytes, string mime, string displayName, CancellationToken ct)
     {
         // 1) start a resumable upload session.
-        var startUrl = $"{_baseUrl}/upload/v1beta/files?key={Uri.EscapeDataString(apiKey)}";
+        var startUrl = $"{_baseUrl}/upload/v1beta/files";
         string uploadUrl;
         using (var start = new HttpRequestMessage(HttpMethod.Post, startUrl))
         {
+            start.Headers.TryAddWithoutValidation(KeyHeader, apiKey);
             start.Headers.TryAddWithoutValidation("X-Goog-Upload-Protocol", "resumable");
             start.Headers.TryAddWithoutValidation("X-Goog-Upload-Command", "start");
             start.Headers.TryAddWithoutValidation("X-Goog-Upload-Header-Content-Length", bytes.Length.ToString());
@@ -414,7 +420,7 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         for (int i = 0; state == "PROCESSING" && i < 30; i++)
         {
             await Task.Delay(TimeSpan.FromSeconds(2), ct);
-            using var g = await _http.GetAsync($"{_baseUrl}/v1beta/{name}?key={Uri.EscapeDataString(apiKey)}", ct);
+            using var g = await _http.SendAsync(Get($"{_baseUrl}/v1beta/{name}", apiKey), ct);
             var gbody = await g.Content.ReadAsStringAsync(ct);
             if (!g.IsSuccessStatusCode) break;
             var f = JsonDocument.Parse(gbody).RootElement;
@@ -430,7 +436,8 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         try
         {
             using var del = new HttpRequestMessage(HttpMethod.Delete,
-                $"{_baseUrl}/v1beta/{name}?key={Uri.EscapeDataString(apiKey)}");
+                $"{_baseUrl}/v1beta/{name}");
+            del.Headers.TryAddWithoutValidation(KeyHeader, apiKey);
             using var _ = await _http.SendAsync(del, ct);
         }
         catch { /* best effort cleanup */ }
@@ -438,7 +445,7 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
 
     // ── model catalogue + probe (IModelCatalog) ─────────────────────────────────
 
-    /// <summary>GET /v1beta/models?key=… following <c>nextPageToken</c>. Single attempt per
+    /// <summary>GET /v1beta/models following <c>nextPageToken</c>. Single attempt per
     /// page; throws a <see cref="GeminiApiException"/> on HTTP error / network failure.</summary>
     public async Task<IReadOnlyList<ModelInfo>> ListModelsAsync(string apiKey, CancellationToken ct)
     {
@@ -446,11 +453,11 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         string? pageToken = null;
         for (int page = 0; page < 20; page++)   // hard cap: a runaway token loop must not spin forever
         {
-            var url = $"{_baseUrl}/v1beta/models?key={Uri.EscapeDataString(apiKey)}&pageSize=200"
+            var url = $"{_baseUrl}/v1beta/models?pageSize=200"
                       + (pageToken is null ? "" : "&pageToken=" + Uri.EscapeDataString(pageToken));
             string body;
             HttpResponseMessage resp;
-            try { resp = await _http.GetAsync(url, ct); }
+            try { resp = await _http.SendAsync(Get(url, apiKey), ct); }
             catch (HttpRequestException net) { throw new GeminiApiException(0, net.Message, 1); }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested) { throw new GeminiApiException(0, "délai dépassé (timeout)", 1); }
             using (resp)
@@ -521,7 +528,7 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
         };
         try
         {
-            using var req = JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent?key={Uri.EscapeDataString(apiKey)}", payload);
+            using var req = JsonPost($"{_baseUrl}/v1beta/models/{model}:generateContent", payload, apiKey);
             using var resp = await _http.SendAsync(req, ct);
             var body = await resp.Content.ReadAsStringAsync(ct);
             return new ModelProbeResult(resp.IsSuccessStatusCode, (int)resp.StatusCode,
@@ -536,13 +543,25 @@ public sealed class GeminiClient : ITranscribeClient, IChatClient, IModelCatalog
 
     // ── transient-failure retry layer (mirrors MistralClient) ────────────────────
 
-    private static HttpRequestMessage JsonPost(string url, object payload)
+    /// <summary>The API key travels in this header, never in the URL (proxies and gateways log URLs).</summary>
+    private const string KeyHeader = "x-goog-api-key";
+
+    private static HttpRequestMessage JsonPost(string url, object payload, string apiKey)
     {
         var json = JsonSerializer.Serialize(payload);
-        return new HttpRequestMessage(HttpMethod.Post, url)
+        var req = new HttpRequestMessage(HttpMethod.Post, url)
         {
             Content = new StringContent(json, Encoding.UTF8, "application/json"),
         };
+        req.Headers.TryAddWithoutValidation(KeyHeader, apiKey);
+        return req;
+    }
+
+    private static HttpRequestMessage Get(string url, string apiKey)
+    {
+        var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.TryAddWithoutValidation(KeyHeader, apiKey);
+        return req;
     }
 
     private async Task<string> SendWithRetryAsync(

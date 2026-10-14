@@ -1,3 +1,4 @@
+using Echo.Core;
 using Echo.App.Engine;
 
 namespace Echo.Tests;
@@ -44,24 +45,34 @@ public sealed class EngineUpdaterTests : IDisposable
     public void ResolveUrl_AbsoluteUrls_PassThrough(string url)
         => Assert.Equal(url, Updater.ResolveUrl(@"C:\MAJ\version.json", url));
 
+    private const string Rel = "https://github.com/romainio/echo-recorder/releases/latest/download/";
+
     [Fact]
     public void Package_WithoutSha_IsRefused()
     {
-        Assert.NotNull(Updater.RefusedPackage(@"C:\MAJ\Echo.zip", null));
-        Assert.NotNull(Updater.RefusedPackage(@"C:\MAJ\Echo.zip", "  "));
-        Assert.NotNull(Updater.RefusedPackage(@"C:\MAJ\Echo.zip", "abc"));          // not a sha256
-        Assert.Null(Updater.RefusedPackage(@"C:\MAJ\Echo.zip", Sha));
+        Assert.NotNull(Updater.RefusedPackage(Rel + "Echo.zip", null));
+        Assert.NotNull(Updater.RefusedPackage(Rel + "Echo.zip", "  "));
+        Assert.NotNull(Updater.RefusedPackage(Rel + "Echo.zip", "abc"));          // not a sha256
+        Assert.Null(Updater.RefusedPackage(Rel + "Echo.zip", Sha));
+    }
+
+    [Theory]
+    [InlineData("http://github.com/romainio/echo-recorder/releases/latest/download/Echo.zip")]
+    [InlineData("https://example.org/Echo.zip")]
+    [InlineData("https://github.com/someone/echo-recorder/releases/latest/download/Echo.zip")]
+    [InlineData("https://github.com/romainio/echo-recorder/releases/../../../evil/Echo.zip")]
+    [InlineData("https://github.com.evil.org/romainio/echo-recorder/releases/Echo.zip")]
+    [InlineData(@"C:\MAJ\Echo.zip")]
+    [InlineData(@"\\srv\share\Echo.zip")]
+    public void OnlyTheRepositoryReleases_AreAccepted(string url)
+    {
+        Assert.NotNull(Updater.RefusedPackage(url, Sha));
+        Assert.NotNull(Updater.RefusedSource(url));
     }
 
     [Fact]
-    public void PlainHttp_IsRefused_HttpsAndLocalPathsAreNot()
-    {
-        Assert.NotNull(Updater.RefusedPackage("http://example.org/Echo.zip", Sha));
-        Assert.NotNull(Updater.RefusedSource("HTTP://example.org/version.json"));
-        Assert.Null(Updater.RefusedPackage("https://example.org/Echo.zip", Sha));
-        Assert.Null(Updater.RefusedPackage(@"\\srv\share\Echo.zip", Sha));
-    }
-
+    public void TheDefaultSource_IsAccepted()
+        => Assert.Null(Updater.RefusedSource(EchoConstants.DefaultUpdateUrl));
     [Fact]
     public async Task Download_WithoutSha_ThrowsBeforeReadingAnything()
     {
@@ -73,9 +84,7 @@ public sealed class EngineUpdaterTests : IDisposable
     [Fact]
     public void Check_VersionJsonWithoutSha_IsNotAdvertised()
     {
-        var vj = Path.Combine(_dir, "version.json");
-        File.WriteAllText(vj, "{\"version\":\"99.0.0\",\"url\":\"Echo-99.0.0.zip\"}");
-        var info = Updater.Check(vj, "5.5.0");
+        var info = Updater.Evaluate(Rel + "version.json", "{\"version\":\"99.0.0\",\"url\":\"Echo-99.0.0.zip\"}", "5.5.0");
         Assert.NotNull(info);
         Assert.False(info!.Available);
     }
@@ -83,11 +92,24 @@ public sealed class EngineUpdaterTests : IDisposable
     [Fact]
     public void Check_CompleteVersionJson_IsAdvertised()
     {
+        var info = Updater.Evaluate(Rel + "version.json", $"{{\"version\":\"99.0.0\",\"url\":\"Echo-99.0.0.zip\",\"sha256\":\"{Sha}\"}}", "5.5.0");
+        Assert.True(info!.Available);
+        Assert.Equal(Rel + "Echo-99.0.0.zip", info.Url);
+    }
+
+    [Fact]
+    public void Check_LocalVersionJson_IsIgnored()
+    {
         var vj = Path.Combine(_dir, "version.json");
         File.WriteAllText(vj, $"{{\"version\":\"99.0.0\",\"url\":\"Echo-99.0.0.zip\",\"sha256\":\"{Sha}\"}}");
-        var info = Updater.Check(vj, "5.5.0");
-        Assert.True(info!.Available);
-        Assert.Equal(Path.Combine(_dir, "Echo-99.0.0.zip"), info.Url);
+        Assert.Null(Updater.Check(vj, "5.5.0"));
+    }
+
+    [Fact]
+    public void Evaluate_AbsoluteZipElsewhere_IsNotAdvertised()
+    {
+        var info = Updater.Evaluate(Rel + "version.json", $"{{\"version\":\"99.0.0\",\"url\":\"https://evil.example/Echo.zip\",\"sha256\":\"{Sha}\"}}", "5.5.0");
+        Assert.False(info!.Available);
     }
 
     [Fact]

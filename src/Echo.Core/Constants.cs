@@ -9,11 +9,15 @@ public static class EchoConstants
     public const string AppName = "Echo";
 
     /// <summary>.NET rewrite line. Kept &gt; the Python 4.2.0 so update logic treats it as newer.</summary>
-    public const string AppVersion = "5.8.2";
+    public const string AppVersion = "5.9.0";
 
     /// <summary>Where every install looks for updates: the version.json asset of the latest
     /// GitHub release (public, no sign-in). Its relative zip url resolves next to it.</summary>
     public const string DefaultUpdateUrl = "https://github.com/romainio/echo-recorder/releases/latest/download/version.json";
+
+    /// <summary>The only update source Echo accepts (version.json AND zip): the releases of the public
+    /// repository. Anything else is refused, so a tampered settings.json cannot redirect updates.</summary>
+    public const string TrustedUpdatePrefix = "https://github.com/romainio/echo-recorder/releases/";
 
     /// <summary>Online help: Markdown pages in the public repository (README.md, README.fr.md,
     /// README.es.md), opened in the system browser by the Help buttons.</summary>

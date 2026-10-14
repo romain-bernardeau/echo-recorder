@@ -6,13 +6,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Echo.Core;
 using Echo.Core.Models;
 
 namespace Echo.App.Engine;
 
 /// <summary>
-/// Admin-free update via a remote <c>version.json</c> (https URL OR a synced
-/// SharePoint/OneDrive folder path). Faithful port of <c>updater.py</c>: numeric-tuple
+/// Admin-free update via the <c>version.json</c> of the latest GitHub release (no other
+/// source is accepted, see <see cref="RefusedSource"/>). Faithful port of <c>updater.py</c>: numeric-tuple
 /// version compare, sha256 (mandatory) + zip-CRC integrity, staging in
 /// <c>%TEMP%\echo_update</c>, a one-deep <c>.previous</c> backup, and a detached
 /// applier/rollback that runs AFTER the app closes (so locked runtime files copy) then
@@ -38,6 +39,12 @@ public static class Updater
         string text;
         try { text = ReadRemoteText(updateUrl, TimeSpan.FromSeconds(10)); }
         catch (Exception ex) { Log.Error("update check", ex); return null; }
+        return Evaluate(updateUrl, text, currentVersion);
+    }
+
+    /// <summary>Reads a fetched version.json (pure, for the tests).</summary>
+    internal static UpdateInfo? Evaluate(string updateUrl, string text, string currentVersion)
+    {
         try
         {
             using var doc = JsonDocument.Parse(text);
@@ -59,18 +66,22 @@ public static class Updater
         catch (Exception ex) { Log.Error("update parse", ex); return null; }
     }
 
-    /// <summary>Why an update source must not be used, or null when acceptable: https or a
-    /// local / UNC / synced-folder path only (plain http can be altered in transit).</summary>
+    /// <summary>Why an update source must not be used, or null when acceptable: only the GitHub
+    /// releases of the repository (<see cref="EchoConstants.TrustedUpdatePrefix"/>). Plain http,
+    /// other hosts, local and UNC paths are refused: whoever could rewrite settings.json or
+    /// version.json must not be able to point Echo at a package of their own.</summary>
     internal static string? RefusedSource(string url)
     {
         if (string.IsNullOrWhiteSpace(url)) return "adresse vide";
-        if (url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) return "source http:// refusée (https ou dossier local uniquement)";
+        if (!url.StartsWith(EchoConstants.TrustedUpdatePrefix, StringComparison.OrdinalIgnoreCase)
+            || url.Contains("..", StringComparison.Ordinal))
+            return "source refusée (seules les releases GitHub d'Echo sont acceptées)";
         return null;
     }
 
     /// <summary>Why a package must not be installed, or null: the sha256 is MANDATORY (the zip
-    /// CRC only catches accidental corruption, not a replaced archive), and the zip source
-    /// follows the same https / local rule as version.json.</summary>
+    /// CRC only catches accidental corruption, not a replaced archive), and the zip must come
+    /// from the same GitHub releases as version.json.</summary>
     internal static string? RefusedPackage(string? zipUrl, string? sha256)
     {
         if (string.IsNullOrWhiteSpace(zipUrl)) return "url du paquet absente";

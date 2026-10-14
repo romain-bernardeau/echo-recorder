@@ -57,9 +57,10 @@ root; `SessionLayoutMigration` tidies older folders at startup (moves only, neve
 `publish.ps1` runs the tests, publishes self-contained, bundles `ffmpeg.exe` and writes a zip
 plus `version.json` (version, relative zip URL, mandatory sha256), then builds `Echo-Setup.exe`
 with Inno Setup (`deploy/Echo.iss`: per-user, no admin, no uninstaller of its own since Echo
-registers itself in Installed apps at startup). All three go to the GitHub release. Installed copies check
-`update_url` at startup, download and verify the zip, then a detached script swaps the files
-and keeps a `.previous` copy for rollback.
+registers itself in Installed apps at startup). All three go to the GitHub release, with the FFmpeg
+binary and its complete source (LGPL). Installed copies check the latest release at startup
+(`update_url`; any other source is refused, and the page cannot change it), download and verify
+the zip, then a detached script swaps the files and keeps a `.previous` copy for rollback.
 
 ## Build
 

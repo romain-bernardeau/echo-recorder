@@ -233,7 +233,6 @@ public sealed class TeamsMonitor : ITeamsMonitor, IDisposable
         bool namesSeen = false, compactAlerted = false;
         int sinceRepick = 0, compactTicks = 0;
         string lastAcquiredName = "";
-        var seenTitles = new HashSet<string>(StringComparer.Ordinal);   // diagnostic dedup
 
         using var speakersW = new StreamWriter(
             new FileStream(speakersPath, FileMode.Create, FileAccess.Write, FileShare.Read), Utf8NoBom) { AutoFlush = true };
@@ -334,15 +333,6 @@ public sealed class TeamsMonitor : ITeamsMonitor, IDisposable
                 {
                     var pids = TeamsPidSet();
                     var wins = FindTeamsWindows(automation, pids);
-                    // Diagnostic: log each DISTINCT window title once. Reveals how the title
-                    // evolves (join screen -> real "<Subject> | Microsoft Teams") so PickSubject
-                    // can be tuned from a real trace instead of guessing (2026-07-16).
-                    foreach (var w in wins)
-                    {
-                        var nm = Uia.Name(w);
-                        if (!string.IsNullOrEmpty(nm) && seenTitles.Add(nm))
-                            _log?.Invoke($"[Echo.Teams] window title seen: {nm}");
-                    }
                     var cand = SubjectFromWindows(wins);
                     if (!string.IsNullOrEmpty(cand))
                     {

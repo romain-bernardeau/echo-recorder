@@ -807,7 +807,7 @@ function wireDetail(d,trParsed){
   $$('.cap-note',$('#detailPage')).forEach(b=>b.onclick=async(e)=>{
     e.stopPropagation();
     const name=b.dataset.cap;
-    const txt=await askText(t('cap_note_modal_title'),{sub:name,label:t('note_label'),placeholder:t('note_ph'),okLabel:t('add')});
+    const txt=await askText(t('cap_note_modal_title'),{sub:esc(name),label:t('note_label'),placeholder:t('note_ph'),okLabel:t('add')});
     if(!txt)return;
     let ok=false;try{ok=await api().add_capture_note(path,name,txt);}catch(e){}
     toast(ok?t('cap_note_added'):t('add_fail'),ok?undefined:'err');

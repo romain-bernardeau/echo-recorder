@@ -18,11 +18,13 @@ public class GeminiProviderTests
     {
         private readonly Queue<(HttpStatusCode Status, string Body)> _script;
         public List<(string Url, string Content)> Requests { get; } = new();
+        public List<string?> Keys { get; } = new();   // x-goog-api-key header per request
         public StubHandler(params (HttpStatusCode, string)[] script) => _script = new(script);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var content = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
             Requests.Add((request.RequestUri!.ToString(), content));
+            Keys.Add(request.Headers.TryGetValues("x-goog-api-key", out var key) ? key.First() : null);
             if (_script.Count == 0) throw new InvalidOperationException("unexpected extra request");
             var (status, body) = _script.Dequeue();
             return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -45,9 +47,10 @@ public class GeminiProviderTests
         var c = Client(h);
         var content = await c.ChatCompleteAsync("k", "gemini-3.6-flash", Msgs, 0.2, jsonObject: false, CancellationToken.None);
         Assert.Equal("réponse", content);
-        // URL carries the model + key; body carries systemInstruction and the user turn.
+        // URL carries the model, the key travels in a header; body carries systemInstruction and the user turn.
         Assert.Contains("models/gemini-3.6-flash:generateContent", h.Requests[0].Url);
-        Assert.Contains("key=k", h.Requests[0].Url);
+        Assert.DoesNotContain("key=", h.Requests[0].Url);
+        Assert.Equal("k", h.Keys[0]);
         Assert.Contains("systemInstruction", h.Requests[0].Content);
         Assert.Contains("\"role\":\"user\"", h.Requests[0].Content);
     }

@@ -76,20 +76,19 @@ public sealed class SettingsStore : ISettingsStore
     /// 5.7.1: updates come from the latest GitHub release. Installs set up from a synced
     /// SharePoint folder point at a local "…\MAJ\version.json", which breaks as soon as the
     /// folder is no longer synced; an empty value disabled updates altogether. Both move to
-    /// the GitHub URL. A custom https source is left alone.
+    /// the GitHub URL.
     /// 5.8.1: the GitHub account was renamed (romain-bernardeau → romainio). GitHub redirects the
     /// old name only until someone else claims it, so the old repository URL moves too.
+    /// 5.9.0: only the repository's releases are accepted (Updater.RefusedSource), so any other
+    /// source, custom https included, moves to the default.
     /// </summary>
     private static AppSettings MigrateUpdateUrl(AppSettings s)
     {
         var url = s.UpdateUrl?.Trim() ?? "";
-        if (!url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
-            || url.StartsWith(LegacyGitHubRepo, StringComparison.OrdinalIgnoreCase))
+        if (!url.StartsWith(EchoConstants.TrustedUpdatePrefix, StringComparison.OrdinalIgnoreCase))
             s.UpdateUrl = EchoConstants.DefaultUpdateUrl;
         return s;
     }
-
-    private const string LegacyGitHubRepo = "https://github.com/romain-bernardeau/";
 
     private static AppSettings MigrateToFreeTier(AppSettings s)
     {
@@ -274,11 +273,17 @@ public sealed class SettingsStore : ISettingsStore
             var wanted = JsonSerializer.SerializeToNode(_current, Opts)!.AsObject()[jsonKey]?.ToJsonString() ?? "null";
             var onDisk = (JsonNode.Parse(ReadShared(_paths.SettingsFile)) as JsonObject)?[jsonKey]?.ToJsonString() ?? "null";
             Log(wanted == onDisk
-                ? $"[settings] {jsonKey} = {Short(onDisk)} (vérifié sur disque)"
-                : $"[settings] ANOMALIE {jsonKey} : écrit {Short(wanted)} mais le fichier contient {Short(onDisk)}");
+                ? $"[settings] {jsonKey} = {(PersonalKeys.Contains(jsonKey) ? "(masqué)" : Short(onDisk))} (vérifié sur disque)"
+                : $"[settings] ANOMALIE {jsonKey} : la valeur relue diffère de celle écrite");
         }
         catch (Exception ex) { Log($"[settings] {jsonKey} : relecture de contrôle impossible ({ex.GetType().Name})"); }
     }
+
+    /// <summary>Settings that hold personal or client data: logged by name only (logs end up in bug reports).</summary>
+    private static readonly HashSet<string> PersonalKeys = new(StringComparer.Ordinal)
+    {
+        "user_name", "user_email", "flags", "cr_templates", "recordings_dir", "cloudflare_account_id",
+    };
 
     private static string Short(string v) => v.Length <= 120 ? v : v[..120] + "…";
 }

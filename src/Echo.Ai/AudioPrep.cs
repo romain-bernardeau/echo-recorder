@@ -26,7 +26,8 @@ public static class AudioPrep
     /// <summary>
     /// Resolve the ffmpeg executable: an explicit existing <see cref="FfmpegExe"/>
     /// path wins; otherwise a bundled <c>&lt;appdir&gt;\bin\ffmpeg.exe</c> if present;
-    /// otherwise the bare command (PATH lookup, like the Python app).
+    /// otherwise the first ffmpeg.exe of PATH, as an absolute path (a bare name would also be
+    /// searched in the current directory).
     /// </summary>
     public static string ResolveFfmpeg()
     {
@@ -38,6 +39,15 @@ public static class AudioPrep
             if (File.Exists(bundled)) return bundled;
         }
         catch { /* fall back to PATH */ }
+        foreach (var dir in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            try
+            {
+                var candidate = Path.Combine(dir.Trim().Trim('"'), "ffmpeg.exe");
+                if (Path.IsPathRooted(candidate) && File.Exists(candidate)) return candidate;
+            }
+            catch { /* malformed PATH entry */ }
+        }
         return FfmpegExe;
     }
 
@@ -120,7 +130,7 @@ public static class AudioPrep
 
     public static string ConvertToWav16kMono(string input, string outWav, CancellationToken ct)
     {
-        var (code, err) = Ffmpeg.Run(new[] { "-y", "-i", input, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", outWav },
+        var (code, err) = Ffmpeg.Run(new[] { "-y", "-protocol_whitelist", "file", "-i", input, "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", outWav },
             Ffmpeg.TimeoutFor(input), ct);
         if (code != 0)
             throw new InvalidOperationException($"Impossible de lire ce fichier audio (ffmpeg code {code}) : {Tail(err)}");

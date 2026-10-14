@@ -99,13 +99,16 @@ $enc = & $FfmpegPath -hide_banner -encoders 2>$null | Select-String "libmp3lame"
 if (-not $enc) { throw "Ce ffmpeg n'encode pas le MP3 (libmp3lame absent) : $FfmpegPath" }
 New-Item -ItemType Directory -Force (Join-Path $stage "bin") | Out-Null
 Copy-Item $FfmpegPath (Join-Path $stage "bin\ffmpeg.exe") -Force
-# licence LGPL, notice FFmpeg, licence LAME et provenance (sources : release ffmpeg-audio-<version>)
+# licence LGPL, notice FFmpeg, licence LAME et provenance (sources : jointes a chaque release GitHub)
 foreach ($lic in @("FFMPEG-COPYING.LGPLv2.1.txt", "FFMPEG-LICENSE.md", "LAME-COPYING.txt", "BUILD-INFO.txt")) {
     $p = Join-Path $ffDir $lic
     if (-not (Test-Path $p)) { throw "$lic absent a cote de ffmpeg.exe ($ffDir) : la licence doit accompagner le binaire." }
     Copy-Item $p (Join-Path $stage "bin\$lic") -Force
 }
 Write-Host ("   bundle : {0} ({1:N1} Mo, LGPL, libmp3lame OK, licences jointes)" -f $FfmpegPath, ((Get-Item $FfmpegPath).Length / 1MB))
+if (-not $SkipGitHub -and @(Get-ChildItem (Join-Path $env:LOCALAPPDATA "Echo-build\ffmpeg-audio-dist") -File -ErrorAction SilentlyContinue).Count -lt 5) {
+    throw "Sources ffmpeg absentes (Echo-build\ffmpeg-audio-dist) : lancez tools\get-ffmpeg.ps1, elles sont jointes a la release (LGPL)."
+}
 
 # -- 6. zip + sha256 + version.json  -> MAJ\ ------------------------------------------
 Step "Zip + version.json (MAJ)"
@@ -164,7 +167,12 @@ if (-not $SkipGitHub) {
     $ghRepo = "romainio/echo-recorder"
     $title = "Echo $Version"
     $body = if ($Notes) { $Notes } else { $title }
-    & gh release create "v$Version" $zipPath $vjPath $setupPath --repo $ghRepo --target main --title $title --notes $body
+    # ffmpeg (LGPL) : binaire + sources exactes joints a chaque release (tools\get-ffmpeg.ps1 les met en cache)
+    $ffDist = Join-Path $env:LOCALAPPDATA "Echo-build\ffmpeg-audio-dist"
+    $ffAssets = @(Get-ChildItem $ffDist -File -ErrorAction SilentlyContinue | ForEach-Object FullName)
+    if ($ffAssets.Count -lt 5) { throw "Sources ffmpeg absentes de $ffDist : lancez tools\get-ffmpeg.ps1 (obligation LGPL)." }
+    $body += "`n`nFFmpeg (LGPL, audio only): ffmpeg-audio-*-win64.zip, complete source (ffmpeg, LAME, build.sh) and SHA256SUMS.txt are attached."
+    & gh release create "v$Version" $zipPath $vjPath $setupPath @ffAssets --repo $ghRepo --target main --title $title --notes $body
     if ($LASTEXITCODE -ne 0) { throw "Creation de la release GitHub en echec (gh). Le dossier partage est a jour ; relancez avec -SkipTests apres correction." }
     Write-Host "   https://github.com/$ghRepo/releases/tag/v$Version"
 }

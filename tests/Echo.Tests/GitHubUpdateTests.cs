@@ -21,6 +21,7 @@ public class GitHubUpdateTests
     [InlineData(@"\\\\server\\share\\MAJ\\version.json")]                  // UNC path
     [InlineData("")]                                                        // updates were off
     [InlineData("https://github.com/romain-bernardeau/echo-recorder/releases/latest/download/version.json")] // renamed account
+    [InlineData("https://example.com/echo/version.json")]                // any other source (5.9.0)
     public void LocalOrEmptySource_MovesToGitHub(string jsonEscapedUrl)
     {
         using var p = new TempProfile();
@@ -31,16 +32,6 @@ public class GitHubUpdateTests
 
         Assert.Equal(GitHub, s.UpdateUrl);
         Assert.Equal("cloudflare", s.CrProvider);                            // nothing else touched
-    }
-
-    [Fact]
-    public void CustomHttpsSource_IsKept()
-    {
-        using var p = new TempProfile();
-        Directory.CreateDirectory(Path.GetDirectoryName(p.SettingsFile)!);
-        File.WriteAllText(p.SettingsFile, "{\"update_url\":\"https://example.com/echo/version.json\"}");
-
-        Assert.Equal("https://example.com/echo/version.json", p.Store().Current.UpdateUrl);
     }
 
     [Fact]

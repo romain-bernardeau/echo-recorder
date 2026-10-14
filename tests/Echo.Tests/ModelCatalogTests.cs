@@ -19,11 +19,13 @@ public class ModelCatalogTests
     {
         private readonly Queue<(HttpStatusCode Status, string Body)> _script;
         public List<(string Url, string Content)> Requests { get; } = new();
+        public List<string?> Keys { get; } = new();   // x-goog-api-key header per request
         public StubHandler(params (HttpStatusCode, string)[] script) => _script = new(script);
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
             var content = request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct);
             Requests.Add((request.RequestUri!.ToString(), content));
+            Keys.Add(request.Headers.TryGetValues("x-goog-api-key", out var key) ? key.First() : null);
             if (_script.Count == 0) throw new InvalidOperationException("unexpected extra request");
             var (status, body) = _script.Dequeue();
             return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -108,7 +110,8 @@ public class ModelCatalogTests
         Assert.Equal(2, h.Requests.Count);
         Assert.DoesNotContain("pageToken=", h.Requests[0].Url);
         Assert.Contains("pageToken=tok2", h.Requests[1].Url);
-        Assert.Contains("key=k", h.Requests[1].Url);
+        Assert.DoesNotContain("key=", h.Requests[1].Url);
+        Assert.Equal("k", h.Keys[1]);
 
         // "models/" prefix stripped, embeddings/imagen/veo dropped, duplicate across pages collapsed, sorted.
         Assert.Equal(new[] { "gemini-3.5-transcribe", "gemini-3.6-flash", "gemini-3.6-pro" }, models.Select(m => m.Id).ToArray());

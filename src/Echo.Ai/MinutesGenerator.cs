@@ -411,7 +411,7 @@ public sealed class MinutesGenerator : IMinutesGenerator
             var merged = new Dictionary<string, string>(LabelsEn);
             foreach (var p in custom.EnumerateObject())
                 if (p.Value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(p.Value.GetString()))
-                    merged[p.Name] = p.Value.GetString()!;
+                    merged[p.Name] = WebUtility.HtmlEncode(p.Value.GetString()!);   // model text: never raw HTML in the .eml
             return merged;
         }
         return LabelsEn;
