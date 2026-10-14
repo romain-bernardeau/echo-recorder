@@ -15,7 +15,7 @@ Automation, transcribes with a cloud speech model and writes the minutes with an
 | Teams | FlaUI (UIA3) on MTA worker threads | Meeting detection, active speaker, roster, subject |
 | AI | Raw REST (`HttpClient` + `System.Text.Json`) | Mistral (Voxtral + chat) and Cloudflare Workers AI (Whisper + chat) |
 | Secrets | DPAPI (`ProtectedData`, CurrentUser) | Per-user encrypted API keys |
-| Audio tools | `ffmpeg.exe` next to the app (`bin/`) | Resampling, silence trimming, MP3 archive and upload |
+| Audio tools | `ffmpeg.exe` next to the app (`bin/`): audio-only LGPL build, `tools/ffmpeg-audio` | Decoding imports, resampling, silence trimming, MP3 archive and upload |
 
 ## Projects
 

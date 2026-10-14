@@ -196,7 +196,8 @@ public static class AudioArchive
 
     internal static double DecodedDuration(string mediaPath, TimeSpan timeout, CancellationToken ct)
     {
-        var (code, err) = Ffmpeg.Run(new[] { "-hide_banner", "-i", mediaPath, "-f", "null", "-" }, timeout, ct);
+        // -vn: the bundled audio-only ffmpeg has no video codec to "decode" a video stream with.
+        var (code, err) = Ffmpeg.Run(new[] { "-hide_banner", "-i", mediaPath, "-vn", "-f", "null", "-" }, timeout, ct);
         if (code != 0) throw new InvalidOperationException($"décodage impossible (exit {code})");
         double best = -1;
         foreach (Match m in Regex.Matches(err, @"(?:time=|Duration: )(\d+):(\d+):(\d+(?:\.\d+)?)"))

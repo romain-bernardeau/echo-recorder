@@ -15,7 +15,7 @@
 #   -Version    nouvelle version (met a jour Echo.Core\Constants.cs) ; omis = version actuelle
 #   -Root       dossier partage synchronise (defaut : $env:ECHO_PUBLISH_ROOT) ; MAJ\ et Installation\ y sont crees
 #   -Notes      note de version affichee cote collegue (version.json)
-#   -FfmpegPath ffmpeg.exe a bundler ; defaut = cache essentials, puis PATH (doit avoir libmp3lame)
+#   -FfmpegPath ffmpeg.exe a bundler (avec ses licences a cote) ; defaut = %LOCALAPPDATA%\Echo-build\ffmpeg-audio (tools\get-ffmpeg.ps1)
 #   -KeepZips   nombre de zips conserves dans MAJ (defaut 3)
 #   -SkipTests  saute la suite de tests (deconseille)
 #   -SkipGitHub ne cree pas la release GitHub (par defaut : release v<version> avec le zip + version.json,
@@ -85,25 +85,27 @@ foreach ($banned in @("context_bias.txt", "secret.bin", "secret.txt", "secret_go
     if ($hit) { throw "SECURITE : $banned trouve dans le publish ($($hit.FullName)) — abandon." }
 }
 Write-Host "   contenu OK (Echo.exe, ui, lexique ; aucune donnee locale)"
-# licence d'Echo + notices des composants tiers (dont ffmpeg, GPL) livrees avec le binaire
+# licence d'Echo + notices des composants tiers (dont ffmpeg, LGPL) livrees avec le binaire
 foreach ($f in @("LICENSE", "THIRD-PARTY-NOTICES.md")) { Copy-Item (Join-Path $repo $f) (Join-Path $stage $f) -Force }
 
-# -- 5. ffmpeg (essentials de preference) --------------------------------------------
+# -- 5. ffmpeg audio LGPL (tools\get-ffmpeg.ps1) + ses licences ----------------------------
 Step "ffmpeg"
-if (-not $FfmpegPath) {
-    $cache = Join-Path $env:LOCALAPPDATA "Echo-build\ffmpeg\ffmpeg.exe"
-    $repoTool = Join-Path $repo "tools\ffmpeg\ffmpeg.exe"
-    $cmd = Get-Command ffmpeg -ErrorAction SilentlyContinue
-    if (Test-Path $cache) { $FfmpegPath = $cache }
-    elseif (Test-Path $repoTool) { $FfmpegPath = $repoTool }
-    elseif ($cmd) { $FfmpegPath = $cmd.Source }
-    else { throw "ffmpeg introuvable. Placez un build essentials dans $cache (voir tools\get-ffmpeg.ps1) ou passez -FfmpegPath." }
-}
+$ffDir = if ($FfmpegPath) { Split-Path -Parent $FfmpegPath } else { Join-Path $env:LOCALAPPDATA "Echo-build\ffmpeg-audio" }
+$FfmpegPath = Join-Path $ffDir "ffmpeg.exe"
+if (-not (Test-Path $FfmpegPath)) { throw "ffmpeg introuvable : $FfmpegPath. Lancez tools\get-ffmpeg.ps1." }
+$ver = (& $FfmpegPath -hide_banner -version 2>$null) -join "`n"
+if ($ver -match '--enable-(gpl|nonfree)') { throw "Ce ffmpeg contient des composants GPL ou nonfree : seul le build audio LGPL (tools\get-ffmpeg.ps1) est livre." }
 $enc = & $FfmpegPath -hide_banner -encoders 2>$null | Select-String "libmp3lame"
 if (-not $enc) { throw "Ce ffmpeg n'encode pas le MP3 (libmp3lame absent) : $FfmpegPath" }
 New-Item -ItemType Directory -Force (Join-Path $stage "bin") | Out-Null
 Copy-Item $FfmpegPath (Join-Path $stage "bin\ffmpeg.exe") -Force
-Write-Host ("   bundle : {0} ({1:N0} Mo, libmp3lame OK)" -f $FfmpegPath, ((Get-Item $FfmpegPath).Length / 1MB))
+# licence LGPL, notice FFmpeg, licence LAME et provenance (sources : release ffmpeg-audio-<version>)
+foreach ($lic in @("FFMPEG-COPYING.LGPLv2.1.txt", "FFMPEG-LICENSE.md", "LAME-COPYING.txt", "BUILD-INFO.txt")) {
+    $p = Join-Path $ffDir $lic
+    if (-not (Test-Path $p)) { throw "$lic absent a cote de ffmpeg.exe ($ffDir) : la licence doit accompagner le binaire." }
+    Copy-Item $p (Join-Path $stage "bin\$lic") -Force
+}
+Write-Host ("   bundle : {0} ({1:N1} Mo, LGPL, libmp3lame OK, licences jointes)" -f $FfmpegPath, ((Get-Item $FfmpegPath).Length / 1MB))
 
 # -- 6. zip + sha256 + version.json  -> MAJ\ ------------------------------------------
 Step "Zip + version.json (MAJ)"

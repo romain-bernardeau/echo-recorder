@@ -103,7 +103,7 @@ public static class AudioPrep
     {
         // soxr (precision 28) when the ffmpeg build provides it; otherwise the built-in
         // swr resampler, which is more than enough for 16 kHz mono speech. The bundled
-        // essentials ffmpeg has no libsoxr, so requesting it there fails the whole run.
+        // audio ffmpeg has no libsoxr, so requesting it there fails the whole run.
         string fc = SoxrAvailable()
             ? "aresample=resampler=soxr:precision=28:osr=16000,aformat=channel_layouts=mono"
             : "aresample=osr=16000,aformat=channel_layouts=mono";
@@ -129,7 +129,7 @@ public static class AudioPrep
 
     /// <summary>Does the resolved ffmpeg build ship libsoxr? Probed once via
     /// <c>-buildconf</c> and cached. When absent we fall back to the built-in swr
-    /// resampler so transcription works on the bundled essentials ffmpeg. A probe that
+    /// resampler so transcription works on the bundled audio ffmpeg. A probe that
     /// could not even run (ffmpeg missing) is not cached.</summary>
     private static bool? _soxr;
     private static bool SoxrAvailable()

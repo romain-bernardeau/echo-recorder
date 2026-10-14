@@ -175,10 +175,8 @@ public class AudioPrepTests
     {
         if (!AudioArchive.FfmpegUsable()) return; // needs ffmpeg (bundled in releases)
         var sw = Stopwatch.StartNew();
-        // -re paces a 10 min silent source in real time: a stand-in for a hung ffmpeg.
-        Assert.Throws<TimeoutException>(() => Ffmpeg.Run(
-            new[] { "-hide_banner", "-re", "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "600", "-f", "null", "-" },
-            TimeSpan.FromSeconds(1), CancellationToken.None));
+        // -re paces an endlessly looped silent WAV in real time: a stand-in for a hung ffmpeg.
+        Assert.Throws<TimeoutException>(() => Ffmpeg.Run(EndlessRun(), TimeSpan.FromSeconds(1), CancellationToken.None));
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(15));
     }
 
@@ -188,9 +186,23 @@ public class AudioPrepTests
         if (!AudioArchive.FfmpegUsable()) return;
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(500));
         var sw = Stopwatch.StartNew();
-        Assert.ThrowsAny<OperationCanceledException>(() => Ffmpeg.Run(
-            new[] { "-hide_banner", "-re", "-f", "lavfi", "-i", "anullsrc=r=16000:cl=mono", "-t", "600", "-f", "null", "-" },
-            TimeSpan.FromMinutes(5), cts.Token));
+        Assert.ThrowsAny<OperationCanceledException>(() => Ffmpeg.Run(EndlessRun(), TimeSpan.FromMinutes(5), cts.Token));
         Assert.True(sw.Elapsed < TimeSpan.FromSeconds(15));
+    }
+
+    /// <summary>ffmpeg arguments that never end on their own: a 1 s silent WAV looped forever,
+    /// read in real time. Plain WAV input, so it runs on the bundled audio-only build (no lavfi).</summary>
+    private static string[] EndlessRun()
+    {
+        var wav = Path.Combine(Path.GetTempPath(), $"silence_{Guid.NewGuid():N}.wav");
+        const int data = 16000 * 2;
+        using (var w = new BinaryWriter(File.Create(wav)))
+        {
+            w.Write("RIFF"u8.ToArray()); w.Write(36 + data); w.Write("WAVE"u8.ToArray());
+            w.Write("fmt "u8.ToArray()); w.Write(16); w.Write((short)1); w.Write((short)1);
+            w.Write(16000); w.Write(32000); w.Write((short)2); w.Write((short)16);
+            w.Write("data"u8.ToArray()); w.Write(data); w.Write(new byte[data]);
+        }
+        return new[] { "-hide_banner", "-re", "-stream_loop", "-1", "-i", wav, "-f", "null", "-" };
     }
 }

@@ -54,7 +54,7 @@ BON À SAVOIR
 OÙ EST INSTALLÉ ECHO ?
 ----------------------
 - Le programme : %LOCALAPPDATA%\Programs\Echo (dans votre profil, sans droits
-  admin, une copie par utilisateur, ~270 Mo).
+  admin, une copie par utilisateur, ~175 Mo).
 - Vos données, jamais touchées par une mise à jour ou une réinstallation :
   réglages + clé dans %APPDATA%\Echo, enregistrements dans %LOCALAPPDATA%\Echo
   (bouton « Ouvrir le dossier local » dans l'application).

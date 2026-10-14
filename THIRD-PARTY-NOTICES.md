@@ -3,13 +3,20 @@
 Echo is licensed under the MIT License (see `LICENSE`). It uses or ships the following components,
 each under its own license.
 
-## Bundled in the release zip
+## Bundled in the installer and the release zip
 
-**FFmpeg** (`bin/ffmpeg.exe`), used to convert and encode audio.
-- License: GNU GPL v3 (the "essentials" build from https://www.gyan.dev/ffmpeg/builds/).
-- Source code: https://ffmpeg.org/download.html and https://github.com/FFmpeg/FFmpeg
-- `bin/ffmpeg.exe` is a separate program called by Echo (it is not linked into Echo, so Echo's own
-  code stays under MIT); its exact version is printed by `ffmpeg -version`.
+**FFmpeg 9.0.2 with LAME 3.100** (`bin/ffmpeg.exe`), used to decode, resample, mix and encode audio.
+- License: GNU LGPL v2.1 or later (FFmpeg), GNU LGPL v2 or later (LAME). This is an audio-only
+  build made for Echo, without any GPL or nonfree component and without video codecs.
+- License texts next to the binary: `bin/FFMPEG-COPYING.LGPLv2.1.txt`, `bin/FFMPEG-LICENSE.md`,
+  `bin/LAME-COPYING.txt`; versions, checksums and build options in `bin/BUILD-INFO.txt`.
+- Complete corresponding source: the `ffmpeg-audio-9.0.2` release of this repository holds the
+  exact FFmpeg and LAME source archives and the build script
+  ([tools/ffmpeg-audio/build.sh](tools/ffmpeg-audio/build.sh)), built by the
+  [ffmpeg-audio workflow](.github/workflows/ffmpeg-audio.yml). You may rebuild it, modify it and
+  replace `bin/ffmpeg.exe` with your own build.
+- `bin/ffmpeg.exe` is a separate program called by Echo, not linked into Echo, so Echo's own code
+  stays under MIT.
 
 **.NET 8 runtime, WPF and Windows Forms** (self-contained publish). License: MIT.
 
