@@ -40,7 +40,9 @@ tar xf "lame-$LAME_VERSION.tar.gz"
 
 # -- LAME (static) ------------------------------------------------------------------------
 cd "lame-$LAME_VERSION"
-./configure --host=$HOST --prefix="$PREFIX" --enable-static --disable-shared \
+# LAME's configure sets no optimisation flag for a cross compiler: without them MP3 encoding
+# runs about 3x slower than a regular build.
+CFLAGS="-O3 -fomit-frame-pointer" ./configure --host=$HOST --prefix="$PREFIX" --enable-static --disable-shared \
             --disable-frontend --disable-decoder --disable-gtktest
 make -j"$(nproc)"
 make install
